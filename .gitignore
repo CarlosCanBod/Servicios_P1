@@ -3,6 +3,10 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+.idea
+uv.lock
+pyproject.toml
+
 # C extensions
 *.so
 
