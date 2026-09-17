@@ -160,6 +160,9 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+tmp/
+*.zip
+.antigravityignore
 
 # Spyder project settings
 .spyderproject
