@@ -46,6 +46,23 @@ class vacuum():
         self.position = (position[0], position[1])
         self.orientation = orientation
         self.running_on_battery = simulate_battery
+        # All of these used to be mutable class attributes.  Besides making the
+        # odometer start at (0, 0), that leaked sensor and collision state
+        # between robots created by the test suite.
+        self.velocity = (0, 0)
+        self.is_running = False
+        self.stats_collisions = 0
+        self.current_collision_already_counted = False
+        self.forward_path_is_blocked = False
+        self.sensor = {
+            'position': self.position,
+            'orientation': self.orientation,
+            'proximity': {'left': False, 'front': False, 'right': False},
+            'detection': '',
+            'cells': [None, None, None, None],
+            'battery': BATTERY_SIZE
+        }
+        self.proximity_bbox = {'left': None, 'front': None, 'right': None}
 
     def init_images(self, screen, static_objects, recharge_tiles):
         self.screen = screen
@@ -67,15 +84,15 @@ class vacuum():
         self.check_cells()
 
     def check_proximity(self):
-        if self.forward_path_is_blocked:
-            return
         # front
         dd = self.screen['window']['density']
         t1 = self.vacuum_img['bbox'].copy()
-        t1.x = (self.position[0] - VACUUM_SIZE//2) * dd
-        t1.y = (self.position[1] - VACUUM_SIZE//2) * dd
-        t1.x += (self.velocity[0] * dd)
-        t1.y += (self.velocity[1] * dd)
+        # Compute the next pose in one operation.  The original code assigned
+        # the current floating pose to an integer Rect and then added another
+        # floating displacement, rounding twice.  That made some edges
+        # traversable in one direction but not in reverse.
+        t1.x = (self.position[0] + self.velocity[0] - VACUUM_SIZE//2) * dd
+        t1.y = (self.position[1] + self.velocity[1] - VACUUM_SIZE//2) * dd
         # left
         t0 = t1.copy()
         t0.x += (self.velocity[1] * dd)
@@ -120,10 +137,11 @@ class vacuum():
 
     def start(self):
         self.is_running = True
-        self.velocity = (
+        velocity = (
             (VACUUM_SPEED * math.cos(self.orientation * math.pi/180.0)),
             -(VACUUM_SPEED * math.sin(self.orientation * math.pi/180.0))
         )
+        self.velocity = tuple(0.0 if abs(v) < 1e-12 else v for v in velocity)
 
     def stop(self):
         self.is_running = False
@@ -132,7 +150,7 @@ class vacuum():
     def recharge(self):
         ll = pygame.Rect(
             (self.position[0] - VACUUM_SIZE//2,
-            self.position[0] + VACUUM_SIZE//2),
+            self.position[1] - VACUUM_SIZE//2),
             (VACUUM_SIZE, VACUUM_SIZE)
         )
         for r in self.chargers:
@@ -150,10 +168,11 @@ class vacuum():
             self.orientation += n
             self.orientation %= 360
             if self.is_running == True:
-                self.velocity = (
+                velocity = (
                     (VACUUM_SPEED * math.cos(self.orientation*math.pi/180.0)),
                     -(VACUUM_SPEED * math.sin(self.orientation*math.pi/180.0))
                 )
+                self.velocity = tuple(0.0 if abs(v) < 1e-12 else v for v in velocity)
             # update
             self.sensor['orientation'] += n
             self.sensor['orientation'] %= 360
@@ -246,4 +265,3 @@ class vacuum_zero(vacuum):
     # do nothing on collision
     def collision_strategy(self):
         None
-

@@ -55,6 +55,7 @@ class simulation():
             print("DEBUG: window: {}".format(self.screen))
 
     def stop(self):
+        self.is_running = False
         if self.machine is not None:
             self.machine.stop()
         pygame.quit()
@@ -88,4 +89,3 @@ class simulation():
             self.environment.update_extra()
         pygame.display.update()
         self.clock.tick(self.screen['window']['fps'])
-

@@ -37,6 +37,14 @@ class floorplan():
     cfg_obj_objects = []
 
     def __init__(self, config_file):
+        # The original simulator kept these mutable containers at class level.
+        # A second floorplan in the same Python process therefore inherited all
+        # walls and furniture from the first one.
+        self.objects = []
+        self.extra_objects = {'under': [], 'above': []}
+        self.recharge_tiles = []
+        self.cfg_obj_walls = []
+        self.cfg_obj_objects = []
         n_rows = 0
         n_cols = 0
         
@@ -199,4 +207,3 @@ class floorplan():
         # above
         for obj in self.extra_objects['above']:
             self.screen['display'].blit(obj['img'], obj['bbox'])
-
