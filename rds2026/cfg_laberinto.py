@@ -1,0 +1,30 @@
+#!/usr/bin/python
+# encoding: utf-8
+
+# symbols:
+#   #   walls
+#   |-  wall with a window
+#   Ww  wall is a window
+#   dD  door
+#   R   recharge point
+#   any other are ignored
+
+walls = [
+    '#################',
+    '#    #          #',
+    '#    #          #',
+    '#    #  #########',
+    '#               #',
+    '#               #',
+    '#               #',
+    '#               #',
+    '########        #',
+    '#             ###',
+    '#               #',
+    '#######         #',
+    '#    #        # #',
+    '#             # #',
+    '#             # #',
+    '#################',
+]
+

@@ -26,6 +26,8 @@ from robotica_servicios import (
 DEFAULT_STARTS = {
     "cfg_0.py": (21, 21), "cfg_1.py": (21, 21),
     "cfg_2.py": (21, 21), "cfg_3.py": (7, 7),
+    "cfg_prueba.py": (3, 3), "cfg_pilares.py": (2, 2),
+    "cfg_pilares_grande.py": (3, 3), "cfg_laberinto.py": (3, 3)
 }
 
 
