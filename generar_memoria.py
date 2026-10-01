@@ -195,13 +195,13 @@ def build() -> Path:
 
     story += [Paragraph("4. Apartado C: teleoperación y rutas", h1),
               Paragraph("Grabación", h2),
-              Paragraph("El usuario controla el robot con las flechas, añade waypoints con W y guarda con S o Q. Se almacena una ruta JSON versionada con nombre, escenario, fecha y coordenadas. Se omiten puntos consecutivos duplicados y la escritura usa un fichero temporal para evitar archivos parciales.", body),
+              Paragraph("El usuario controla el robot con las flechas, añade waypoints con W y guarda con S o Q. Los puntos se dibujan con una X azul numerada, incluyendo el inicio automático como punto 1. En el replay el objetivo actual se resalta en rojo; si se ajusta su posición, se muestra también la pose ejecutada. Se almacena una ruta JSON versionada con nombre, escenario, fecha y coordenadas. Se omiten puntos consecutivos duplicados y la escritura usa un fichero temporal para evitar archivos parciales.", body),
               Paragraph("Reproducción autónoma", h2),
               Paragraph("La reproducción no copia órdenes de teclado: carga cada waypoint y llama al planificador del apartado B entre la posición actual y el siguiente objetivo. Así puede rodear obstáculos, valida que mapa y ruta pertenezcan al mismo escenario y reutiliza exactamente el controlador ya probado.", body),
               Paragraph("Controles", h2)]
     controls = Table([
         ["Entrada", "Acción"], ["Arriba", "Avanzar mientras está pulsada"],
-        ["Izquierda / derecha", "Girar 15 grados"], ["W", "Añadir waypoint"],
+        ["Izquierda / derecha", "Girar 90 grados"], ["W", "Añadir waypoint"],
         ["S", "Guardar ruta"], ["Q", "Añadir punto final, guardar y salir"],
     ], colWidths=[4.5 * cm, 10.0 * cm])
     controls.setStyle(TableStyle([

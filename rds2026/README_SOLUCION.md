@@ -70,11 +70,18 @@ Grabación manual:
 ```
 
 - Flecha arriba: avanzar mientras se mantiene pulsada.
-- Flechas izquierda/derecha: girar 15 grados.
+- Flechas izquierda/derecha: girar 90 grados por pulsación.
 - `W`: añadir waypoint.
 - `S`: guardar.
 - `Q`: guardar el punto final y salir.
 - `D`: activar o desactivar la vista de depuración.
+
+Cada waypoint se muestra con una **X azul y su número**, tanto durante la
+grabación como durante el replay. El inicio automático es el waypoint 1; W añade
+los siguientes. Si varios puntos coinciden, sus números comparten una etiqueta.
+Durante el replay el objetivo actual aparece en rojo y se indica su número en
+pantalla. Si C ajusta ese objetivo a otra pose del mapa, un círculo rojo y una
+línea muestran también dónde se ejecutará realmente la llegada.
 
 Reproducción autónoma (replanifica entre waypoints con el apartado B):
 
