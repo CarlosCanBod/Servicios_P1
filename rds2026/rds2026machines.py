@@ -4,6 +4,8 @@
 import math, pygame
 from random import randint
 
+# Huella cuadrada 2x2; cada update avanza 0,5 unidades si está en marcha.
+# La rejilla de A/B coincide con este paso para poder alcanzar sus objetivos.
 VACUUM_SIZE = 2
 VACUUM_SPEED = VACUUM_SIZE/4.0
 
@@ -46,9 +48,9 @@ class vacuum():
         self.position = (position[0], position[1])
         self.orientation = orientation
         self.running_on_battery = simulate_battery
-        # All of these used to be mutable class attributes.  Besides making the
-        # odometer start at (0, 0), that leaked sensor and collision state
-        # between robots created by the test suite.
+        # Estado propio de cada robot: evita compartir sensores y contadores
+        # entre simulaciones. La odometría empieza en la posición real indicada;
+        # el modelo la actualiza sin ruido, una simplificación del simulador.
         self.velocity = (0, 0)
         self.is_running = False
         self.stats_collisions = 0
@@ -84,13 +86,15 @@ class vacuum():
         self.check_cells()
 
     def check_proximity(self):
+        # Modelo del sensor: intersectar la huella del siguiente paso con los
+        # obstáculos del simulador. El algoritmo de la práctica solo consulta
+        # los booleanos resultantes; no inspecciona esta lista de objetos.
         # front
         dd = self.screen['window']['density']
         t1 = self.vacuum_img['bbox'].copy()
-        # Compute the next pose in one operation.  The original code assigned
-        # the current floating pose to an integer Rect and then added another
-        # floating displacement, rounding twice.  That made some edges
-        # traversable in one direction but not in reverse.
+        # Calculamos la posición futura antes de convertirla a píxeles enteros.
+        # Convertir posición y desplazamiento por separado redondeaba dos veces
+        # y podía hacer que un paso funcionara al ir pero fallara al regresar.
         t1.x = (self.position[0] + self.velocity[0] - VACUUM_SIZE//2) * dd
         t1.y = (self.position[1] + self.velocity[1] - VACUUM_SIZE//2) * dd
         # left
@@ -114,6 +118,8 @@ class vacuum():
         self.proximity_bbox = {'left':t0, 'front':t1, 'right':t2}
 
     def check_cells(self):
+        # Cuatro muestras bajo el cuerpo. floor asigna cada coordenada continua
+        # a una celda de suelo; estas muestras también se usan para la cobertura.
         self.sensor['cells'][0] = (
             math.floor(self.sensor['position'][0] - VACUUM_SIZE/4.0),
             math.floor(self.sensor['position'][1] - VACUUM_SIZE/4.0)
@@ -141,6 +147,8 @@ class vacuum():
             (VACUUM_SPEED * math.cos(self.orientation * math.pi/180.0)),
             -(VACUUM_SPEED * math.sin(self.orientation * math.pi/180.0))
         )
+        # cos/sin pueden dejar residuos para 90/180 grados. Anularlos impide
+        # que un movimiento cardinal derive lentamente fuera de su fila/columna.
         self.velocity = tuple(0.0 if abs(v) < 1e-12 else v for v in velocity)
 
     def stop(self):
@@ -148,6 +156,7 @@ class vacuum():
         self.velocity = (0, 0)
 
     def recharge(self):
+        # La huella de recarga usa X e Y de la posición, en unidades del mundo.
         ll = pygame.Rect(
             (self.position[0] - VACUUM_SIZE//2,
             self.position[1] - VACUUM_SIZE//2),
@@ -196,6 +205,8 @@ class vacuum():
         self.stop()
 
     def update(self):
+        # Un ciclo del simulador: detectar, mover si procede, actualizar la
+        # odometría y dibujar. En la teleoperación también se aplica este bloqueo.
         dd = self.screen['window']['density']
         self.check_proximity()
         if self.is_running:
@@ -223,6 +234,7 @@ class vacuum():
                 # collision
                 self.collision_strategy()
                 if self.current_collision_already_counted == False:
+                    # Contar una obstrucción una sola vez hasta volver a avanzar.
                     self.current_collision_already_counted = True
                     self.stats_collisions += 1
                     self.forward_path_is_blocked = True

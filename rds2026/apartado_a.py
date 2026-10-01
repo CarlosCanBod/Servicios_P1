@@ -1,6 +1,10 @@
 #!/usr/bin/python
 # encoding: utf-8
-"""Apartado A: mapping plus terminating complete grid coverage."""
+"""Apartado A: descubrir el mapa y recorrer las poses alcanzables mediante DFS.
+
+Orden del trabajo: observar sin matriz -> explorar -> calcular extremos ->
+crear la matriz -> evaluar y guardar. El tamaño del plano no guía la búsqueda.
+"""
 
 from __future__ import annotations
 
@@ -17,6 +21,8 @@ from robotica_servicios import (
 )
 
 
+# Posiciones iniciales para las demostraciones; no son dimensiones del mapa.
+# Para otro escenario se indica su posición de partida con --start X,Y.
 DEFAULT_STARTS = {
     "cfg_0.py": (21, 21), "cfg_1.py": (21, 21),
     "cfg_2.py": (21, 21), "cfg_3.py": (7, 7),
@@ -47,16 +53,22 @@ def run_coverage(config: str, start: tuple[float, float], fps: int,
                  headless: bool, output: str, legacy_output: str,
                  max_probes: int | None = None, frame_callback=None) -> dict:
     if headless:
+        # SDL dummy permite probar sin ventana visible; el simulador sigue
+        # actualizando el robot y sus rectángulos de contacto normalmente.
         os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     floor = rds2026environment.floorplan(config)
     robot = rds2026machines.vacuum(position=start, orientation=0)
     simulation = rds2026simulation.simulation(
         size=(700, 700), fps=fps, environment=floor, machine=robot
     )
+    # El simulador carga el mundo, pero el algoritmo recibe solo observaciones
+    # y un controlador. Estos conjuntos crecen sin reservar ancho ni alto.
     observations = SparseExplorationMap(Path(config).name, start)
     original_extra = floor.update_extra
 
     def draw_overlay() -> None:
+        # La capa verde/roja muestra las observaciones disponibles hasta ahora;
+        # dibujar una celda no aporta información nueva a la exploración.
         original_extra()
         observations.draw(simulation.screen["display"], simulation.screen["window"]["density"])
 
@@ -65,13 +77,18 @@ def run_coverage(config: str, start: tuple[float, float], fps: int,
     controller = MotionController(simulation, robot, render=not headless,
                                   frame_callback=frame_callback)
     try:
+        # run() termina al agotar la pila DFS. finalize() reserva la matriz
+        # después de calcular los mínimos y máximos de lo observado.
         result = CompleteCoverageExplorer(observations, controller).run(max_probes=max_probes)
         grid = observations.finalize()
-        # Ground truth is read only now, for post-hoc validation. Neither the
-        # explorer nor the matrix constructor sees the simulator's dimensions.
+        # Solo ahora se consulta la geometría completa como referencia de
+        # evaluación: este oráculo nunca decide hacia dónde mueve el robot.
         truth = reachable_truth(floor, simulation.screen["window"]["density"], start)
         truth_surface = surface_cells_for_keys(truth, floor.size[0], floor.size[1])
         covered_surface = grid.covered_points()
+        # Distinguimos poses del centro y superficie barrida. El 100 % se mide
+        # respecto a lo alcanzable desde el inicio, no respecto a todo el piso
+        # (puede haber habitaciones desconectadas o huecos demasiado estrechos).
         metrics = {
             "reachable_poses": len(truth),
             "visited_poses": len(result.visited),
@@ -90,10 +107,13 @@ def run_coverage(config: str, start: tuple[float, float], fps: int,
             "collisions": robot.stats_collisions,
         }
         grid.metadata.update(metrics)
+        # JSON: mapa completo con origen, poses a medio paso y estados 0/1/2.
+        # TXT: cobertura binaria; 0 significa no cubierta, no obstáculo probado.
         grid.save(output)
         grid.save_legacy(legacy_output)
         return metrics
     finally:
+        # Cerrar también si falla un movimiento o el usuario interrumpe.
         simulation.stop()
 
 

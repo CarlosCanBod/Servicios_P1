@@ -171,7 +171,7 @@ def build() -> Path:
 
     story += [Paragraph("3. Apartado B: navegación punto a punto", h1),
               Paragraph("Planificación", h2),
-              Paragraph("Los puntos arbitrarios se proyectan a la pose de medio paso más próxima dentro de la componente conexa del origen, y se informa de la distancia de ajuste. A* busca sobre vecinos cardinales con coste unitario y heurística Manhattan, admisible y consistente; por tanto devuelve un camino de coste mínimo en la rejilla medida.", body),
+              Paragraph("B rechaza extremos ocupados o desconocidos y deja que A* detecte la falta de conexión entre poses libres, sin sustituir el destino por otro cercano. Una coordenada entre muestras sólo se discretiza localmente si todos los vértices de su intervalo son libres conocidos; se informa del ajuste y no se certifica llegada continua exacta al punto arbitrario. A* usa vecinos cardinales de coste unitario y heurística Manhattan admisible y consistente, obteniendo una ruta de coste mínimo en la rejilla medida.", body),
               Paragraph("Reducción de giros", h2),
               Paragraph("Después de A* se eliminan waypoints colineales y se conservan sólo los cambios de dirección. Se estudió Theta* para producir diagonales, pero se descartó como modo predeterminado: incluso con muestras cada 0,5, un mapa táctil discreto no certifica todo el volumen continuo barrido por un robot 2x2. La compresión cardinal conserva la seguridad y obtuvo cero colisiones.", body),
               Paragraph("Control de movimiento", h2),

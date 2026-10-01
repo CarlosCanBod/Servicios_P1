@@ -1,11 +1,11 @@
 #!/usr/bin/python
 # encoding: utf-8
-"""Reusable algorithms for all three parts of practice P1.
+"""Algoritmos compartidos por los apartados A, B y C de la práctica.
 
-The map stored here is a *configuration-space* grid: a FREE cell means that
-the centre of the 2x2 vacuum can occupy that coordinate.  This is safer for
-planning than a decorative floor bitmap because the robot footprint is already
-accounted for.  UNKNOWN is never silently converted into OBSTACLE.
+Espacio de configuración: una pose libre indica que el centro del robot 2x2
+puede situarse allí con su cuerpo completo. Un contacto indica una pose del
+centro bloqueada, no la posición exacta ni la forma completa del mueble.
+La cobertura de suelo se almacena aparte de estas poses navegables.
 """
 
 from __future__ import annotations
@@ -23,6 +23,8 @@ import pygame
 
 
 class Cell(IntEnum):
+    # Estados de la matriz de configuración. UNKNOWN no certifica ni libertad
+    # ni ocupación; A* utiliza exclusivamente las poses observadas como libres.
     UNKNOWN = 0
     FREE = 1
     OBSTACLE = 2
@@ -31,12 +33,20 @@ class Cell(IntEnum):
 Point = tuple[int, int]
 FloatPoint = tuple[float, float]
 FineKey = tuple[int, int]
+# Los vecinos son derecha, abajo, izquierda y arriba (Y crece hacia abajo).
+# La clave (1, 0) representa un incremento de 0,5 unidades en el mundo.
 CARDINALS: tuple[Point, ...] = ((1, 0), (0, 1), (-1, 0), (0, -1))
 FINE_RESOLUTION = 0.5
 
 
 @dataclass
 class OccupancyGrid:
+    """Mapa denso final de A, persistido y utilizado para planificar en B/C.
+
+    cells: estados de poses con coordenadas enteras; coverage: suelo cubierto.
+    fine_free/fine_obstacles conservan también las poses intermedias a 0,5.
+    origin sitúa el índice [0][0] en las coordenadas odométricas del mundo.
+    """
     width: int
     height: int
     cells: list[list[int]] = field(default_factory=list)
@@ -50,6 +60,8 @@ class OccupancyGrid:
     origin: Point = (0, 0)
 
     def __post_init__(self) -> None:
+        # Cada fila corresponde a Y y cada columna a X: matriz[y][x].
+        # Al crearla desconocemos lo no observado dentro del rectángulo final.
         if not self.cells:
             self.cells = [
                 [int(Cell.UNKNOWN) for _ in range(self.width)]
@@ -69,6 +81,7 @@ class OccupancyGrid:
             raise ValueError("Planning resolution must be positive")
 
     def in_bounds(self, point: Point, margin: int = 0) -> bool:
+        """Comprobar el rectángulo almacenado; no consultar el piso real."""
         x, y = point
         return (
             self.origin[0] + margin <= x < self.origin[0] + self.width - margin
@@ -78,12 +91,15 @@ class OccupancyGrid:
     def get(self, point: Point) -> Cell:
         x, y = point
         if not self.in_bounds(point):
+            # Política conservadora de consulta: fuera del archivo no se
+            # permite planificar. Esto no constituye una observación física.
             return Cell.OBSTACLE
         return Cell(self.cells[y - self.origin[1]][x - self.origin[0]])
 
     def set(self, point: Point, value: Cell) -> None:
         if self.in_bounds(point):
             x, y = point
+            # Restar el origen traduce coordenadas del mundo a índices locales.
             self.cells[y - self.origin[1]][x - self.origin[0]] = int(value)
 
     def counts(self) -> dict[str, int]:
@@ -100,12 +116,18 @@ class OccupancyGrid:
         return min(points, key=lambda p: math.dist(p, point))
 
     def configuration_in_bounds(self, point: FloatPoint) -> bool:
-        """Whether the 2x2 robot footprint remains inside the floor extent."""
+        """Comprobar que la huella 2x2 cabe en el rectángulo de esta matriz.
+
+        Es una comprobación geométrica para mapas densos, no un sensor.
+        A explora con SparseExplorationMap, que no impone estos límites.
+        """
         x, y = point
         return (self.origin[0] + 1.0 <= x <= self.origin[0] + self.width - 1.0
                 and self.origin[1] + 1.0 <= y <= self.origin[1] + self.height - 1.0)
 
     def world_to_key(self, point: FloatPoint, resolution: float | None = None) -> FineKey:
+        # Claves enteras evitan acumular errores al buscar vecinos en conjuntos:
+        # con resolución 0,5, la pose (21, 21) se representa como (42, 42).
         resolution = resolution or self.active_resolution
         key = (round(point[0] / resolution), round(point[1] / resolution))
         decoded = self.key_to_world(key, resolution)
@@ -119,6 +141,7 @@ class OccupancyGrid:
 
     @property
     def active_resolution(self) -> float:
+        # Compatibilidad: mapas antiguos sin poses finas usan pasos enteros.
         return self.planning_resolution if self.fine_free else 1.0
 
     def planning_keys(self) -> set[FineKey]:
@@ -144,6 +167,11 @@ class OccupancyGrid:
         return key in self.planning_keys()
 
     def connected_free(self, start: FloatPoint) -> set[FloatPoint]:
+        """Encontrar la componente de poses libres conectada con el inicio.
+
+        La búsqueda solo sigue vecinos conocidos: no conecta habitaciones por
+        zonas desconocidas ni atraviesa pasos donde no cabe el robot.
+        """
         resolution = self.active_resolution
         free = self.planning_keys()
         start_key = self.world_to_key(start, resolution)
@@ -179,7 +207,11 @@ class OccupancyGrid:
             self.set((round(x), round(y)), Cell.OBSTACLE)
 
     def mark_covered(self, point: FloatPoint) -> None:
-        """Mark floor cells under the four footprint sampling points."""
+        """Marcar las celdas de las cuatro muestras bajo la huella del robot.
+
+        Usamos el mismo muestreo que el sensor cells del simulador. El centro
+        puede no ocupar una esquina, aunque una parte del cuerpo sí la cubra.
+        """
         x, y = point
         for sample_y in (y - 0.5, y + 0.5):
             for sample_x in (x - 0.5, x + 0.5):
@@ -196,6 +228,8 @@ class OccupancyGrid:
         }
 
     def save(self, path: str | Path) -> Path:
+        # El JSON guarda las dos capas y el origen: el TXT por sí solo no basta
+        # para reconstruir las poses a medio paso ni sus coordenadas absolutas.
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
@@ -215,6 +249,8 @@ class OccupancyGrid:
             "configuration_free": [list(key) for key in sorted(self.fine_free)],
             "configuration_obstacles": [list(key) for key in sorted(self.fine_obstacles)],
         }
+        # Sustituir el destino tras escribir evita dejarlo parcialmente escrito
+        # si la escritura falla antes de completar el archivo temporal.
         temporary = path.with_suffix(path.suffix + ".tmp")
         temporary.write_text(
             json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8"
@@ -223,6 +259,11 @@ class OccupancyGrid:
         return path
 
     def save_legacy(self, path: str | Path) -> Path:
+        """Exportar cobertura binaria: 1 cubierta, 0 sin cobertura registrada.
+
+        El 0 puede ser desconocido o inaccesible; no significa obstáculo medido.
+        Para planificar se utiliza el JSON, no esta visualización binaria.
+        """
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         temporary = path.with_suffix(path.suffix + ".tmp")
@@ -261,8 +302,8 @@ class OccupancyGrid:
             planning_resolution=resolution,
             origin=tuple(map(int, data.get("origin", (0, 0)))),
         )
-        # Contact observations may sit just outside the visited bounding box;
-        # they are not claimed to be safe configurations.
+        # Validamos las poses libres del archivo. Un contacto no se interpreta
+        # como una posición segura para colocar o mover la aspiradora.
         if any(not result.in_bounds((math.floor(x * resolution), math.floor(y * resolution)))
                for x, y in fine_free):
             raise ValueError("Free configuration point outside the observed map")
@@ -279,9 +320,8 @@ class OccupancyGrid:
                         ((x + self.origin[0]) * density,
                          (y + self.origin[1]) * density, density, density),
                     )
-        # Contacts are configuration-space observations, not necessarily whole
-        # occupied floor cells, so draw compact red markers instead of a false
-        # full-cell obstacle fill.
+        # Verde: superficie cubierta. Los puntos rojos indican poses bloqueadas
+        # del centro; no dibujamos un mueble entero que el sensor no ha medido.
         for key in self.fine_obstacles:
             x, y = self.key_to_world(key, self.planning_resolution)
             pygame.draw.circle(
@@ -292,10 +332,11 @@ class OccupancyGrid:
 
 
 class SparseExplorationMap:
-    """Online observations without a predefined origin or map dimensions.
+    """Observaciones durante A sin origen ni dimensiones de matriz prefijados.
 
-    Coordinates remain in the simulator's odometric world frame. Only after
-    exploration ends do the observed minima/maxima define a dense matrix.
+    Conservamos coordenadas en el marco odométrico del simulador. Los conjuntos
+    crecen con los descubrimientos; no representan el orden del recorrido.
+    Solo finalize() calcula los extremos y crea una OccupancyGrid densa.
     """
 
     planning_resolution = FINE_RESOLUTION
@@ -304,11 +345,15 @@ class SparseExplorationMap:
     def __init__(self, config_name: str, start: FloatPoint):
         self.config_name = config_name
         self.start = start
+        # Almacén en RAM previo a la matriz. Un set evita duplicados y permite
+        # comprobar pertenencia con coste O(1) medio, también con X/Y negativas.
         self.fine_free: set[FineKey] = set()
         self.fine_obstacles: set[FineKey] = set()
         self.covered: set[Point] = set()
 
     def world_to_key(self, point: FloatPoint, resolution: float | None = None) -> FineKey:
+        # Convertimos posiciones a claves de la rejilla, no a índices de matriz.
+        # Todavía no existe un origen de matriz que podamos restar.
         resolution = resolution or self.planning_resolution
         key = (round(point[0] / resolution), round(point[1] / resolution))
         if math.dist(self.key_to_world(key, resolution), point) > 1e-7:
@@ -317,19 +362,27 @@ class SparseExplorationMap:
 
     @staticmethod
     def configuration_in_bounds(point: FloatPoint) -> bool:
-        # The robot has no global boundaries; the proximity sensor decides.
+        # Este nombre mantiene la interfaz del explorador. Aquí solo rechazamos
+        # NaN/infinito: no conocemos paredes ni dimensiones para imponer límites.
+        # Los contactos deben cerrar el área explorable; un mundo abierto podría
+        # extender la búsqueda indefinidamente (max_probes permite limitarla).
         return all(math.isfinite(value) for value in point)
 
     def add_free_pose(self, point: FloatPoint) -> None:
         key = self.world_to_key(point, self.planning_resolution)
         self.fine_free.add(key)
+        # Haber llegado físicamente es evidencia de que esta pose es libre.
         self.fine_obstacles.discard(key)
         x, y = point
+        # Cuatro muestras bajo la huella, como sensor['cells'] del simulador.
+        # La cobertura guarda celdas enteras de suelo, no claves a medio paso.
         for sample_y in (y - 0.5, y + 0.5):
             for sample_x in (x - 0.5, x + 0.5):
                 self.covered.add((math.floor(sample_x), math.floor(sample_y)))
 
     def add_obstacle_pose(self, point: FloatPoint) -> None:
+        # Registramos la pose intentada: el robot no llegó a esa coordenada.
+        # Una pose físicamente visitada conserva prioridad como evidencia libre.
         key = self.world_to_key(point, self.planning_resolution)
         if key not in self.fine_free:
             self.fine_obstacles.add(key)
@@ -340,6 +393,8 @@ class SparseExplorationMap:
     def finalize(self) -> OccupancyGrid:
         if not self.covered:
             raise ValueError("Cannot finalize an empty exploration")
+        # Los extremos incluyen suelo cubierto y poses observadas (libres o
+        # bloqueadas). Son los límites de lo observado, no de todo el apartamento.
         observed = set(self.covered)
         observed.update((math.floor(x * self.planning_resolution),
                          math.floor(y * self.planning_resolution))
@@ -348,6 +403,8 @@ class SparseExplorationMap:
         max_x = max(x for x, _ in observed)
         min_y = min(y for _, y in observed)
         max_y = max(y for _, y in observed)
+        # El +1 incluye ambos extremos. Aquí se reservan las matrices por primera
+        # vez, una vez que A ya ha terminado su exploración física.
         grid = OccupancyGrid(
             max_x - min_x + 1, max_y - min_y + 1,
             config_name=self.config_name, start=self.start,
@@ -355,7 +412,10 @@ class SparseExplorationMap:
             origin=(min_x, min_y),
         )
         for point in self.covered:
+            # Ejemplo: origen (1, 4), celda mundial (5, 7) -> fila 3, columna 4.
             grid.coverage[point[1] - min_y][point[0] - min_x] = 1
+        # cells almacena estados de centros enteros. Las poses de medio paso
+        # siguen completas en fine_free/fine_obstacles para la planificación.
         for key in self.fine_obstacles:
             world = self.key_to_world(key, self.planning_resolution)
             if all(abs(v - round(v)) < 1e-7 for v in world):
@@ -383,11 +443,16 @@ class SparseExplorationMap:
 
 
 def _angle_delta(current: float, target: float) -> float:
+    # Normalizar a [-180, 180) permite escoger el giro de menor magnitud.
     return (target - current + 180.0) % 360.0 - 180.0
 
 
 class MotionController:
-    """Closed-loop point controller for the simulator's fixed-speed vacuum."""
+    """Control en lazo cerrado con odometría perfecta y velocidad fija.
+
+    El planificador da objetivos; aquí se gira, se avanza y se comprueba la
+    posición tras cada paso. No es un PID ni un sistema de SLAM probabilista.
+    """
 
     def __init__(self, simulation, robot, render: bool = True, frame_callback=None):
         self.simulation = simulation
@@ -407,6 +472,8 @@ class MotionController:
         dy = target[1] - self.robot.position[1]
         if abs(dx) < 1e-12 and abs(dy) < 1e-12:
             return
+        # En pantalla Y aumenta hacia abajo, mientras los ángulos positivos
+        # giran en sentido antihorario: por eso atan2 recibe -dy.
         desired = math.degrees(math.atan2(-dy, dx)) % 360.0
         delta = _angle_delta(self.robot.orientation, desired)
         self.robot.stop()
@@ -415,16 +482,22 @@ class MotionController:
 
     def go_to(self, target: FloatPoint, tolerance: float = 1e-6,
               max_frames: int = 10_000) -> bool:
-        """Drive straight to a target; return False on contact/early stop."""
+        """Ejecutar un tramo recto; devolver False si se bloquea o sobrepasa.
+
+        La llegada exacta requiere objetivos compatibles con el paso fijo.
+        Los caminos autónomos se construyen en la rejilla de resolución 0,5.
+        """
         self.rotate_towards(target)
         previous = math.dist(self.robot.position, target)
         if previous <= tolerance:
             return True
+        # start() calcula la velocidad según el rumbo. No mueve el robot hasta
+        # _update(), por lo que podemos consultar el siguiente contacto antes.
         self.robot.start()
         for _ in range(max_frames):
-            # Query the contact footprint before commanding the next physical
-            # step.  The original flow learned the same fact by colliding and
-            # incrementing the simulator's collision counter.
+            # El sensor del simulador comprueba la huella en el siguiente paso.
+            # Si está bloqueada, paramos antes de update(): se registra la
+            # observación sin incrementar el contador de choques del simulador.
             self.robot.check_proximity()
             if self.robot.sensor["proximity"]["front"]:
                 self.robot.stop()
@@ -440,9 +513,12 @@ class MotionController:
                 self.robot.stop()
                 return True
             if self.robot.position == before or not self.robot.is_running:
+                # Detectar ausencia de progreso (por ejemplo, batería agotada).
                 self.robot.stop()
                 return False
             if distance > previous + 1e-7:
+                # Haber empezado a alejarnos indica que pasamos el objetivo;
+                # no damos por cumplida una llegada fuera de la tolerancia.
                 self.robot.stop()
                 return distance <= tolerance
             previous = distance
@@ -451,14 +527,15 @@ class MotionController:
 
     def try_step(self, source: FloatPoint, target: FloatPoint,
                  step: float = FINE_RESOLUTION) -> bool:
+        # El explorador pide vecinos cardinales separados exactamente un paso.
         distance = abs(source[0] - target[0]) + abs(source[1] - target[1])
         if abs(distance - step) > 1e-7:
             raise ValueError(f"Coverage moves must be cardinal steps of {step}")
         ok = self.go_to(target)
         if ok:
             return True
-        # A collision may happen after the first 0.5-cell step.  Return to the
-        # exact lattice point so exploration remains drift-free.
+        # Si un intento recorrió solo parte del tramo, volver al origen evita
+        # que la posición real se desplace respecto a las claves del explorador.
         if math.dist(self.robot.position, source) > 1e-7:
             if not self.go_to(source):
                 raise RuntimeError("Could not retreat after probing an obstacle")
@@ -479,10 +556,11 @@ class CoverageResult:
 
 
 class CompleteCoverageExplorer:
-    """Online DFS coverage over the robot's configuration-space lattice.
+    """Exploración en profundidad (DFS) con retroceso físico por la rejilla.
 
-    Every reachable half-cell centre pose is visited.  Unlike a wall follower,
-    DFS backtracks from dead ends and has a finite termination condition.
+    En una componente finita y estática con inicio válido, prueba todas las
+    poses cardinalmente alcanzables a resolución 0,5. La pila vacía determina
+    el final. No minimiza la longitud total ni descubre regiones desconectadas.
     """
 
     def __init__(self, grid: OccupancyGrid, controller: MotionController):
@@ -495,17 +573,23 @@ class CompleteCoverageExplorer:
         if not self.grid.configuration_in_bounds(start_world):
             raise ValueError(f"Start {start_world} is unsafe for the 2x2 robot")
 
+        # Memoria de búsqueda: visited/obstacles evitan repetir sondeos.
+        # trajectory sí conserva el orden y las repeticiones de los retrocesos.
+        # Las observaciones del mapa se guardan aparte mediante add_free_pose.
         visited: set[Point] = {start}
         obstacles: set[Point] = set()
         trajectory = [start]
         self.grid.add_free_pose(start_world)
-        # Each stack entry stores the cell and its next neighbour index.
+        # Cada entrada contiene [pose, índice del siguiente vecino a probar].
+        # Usamos pila explícita para evitar el límite de recursión de Python.
         stack: list[list] = [[start, 0]]
         probes = 0
 
         while stack and self.controller.simulation.is_running:
             current, direction_index = stack[-1]
             if direction_index >= len(CARDINALS):
+                # Ya examinamos las cuatro direcciones: cerrar esta rama y
+                # regresar físicamente al padre, por una arista ya recorrida.
                 stack.pop()
                 if stack:
                     parent = stack[-1][0]
@@ -522,11 +606,14 @@ class CompleteCoverageExplorer:
             stack[-1][1] += 1
             neighbour = (current[0] + dx, current[1] + dy)
             if neighbour in visited or neighbour in obstacles:
+                # Un mundo estático permite reutilizar lo ya aprendido.
                 continue
             neighbour_world = self.grid.key_to_world(
                 neighbour, self.grid.planning_resolution
             )
             if not self.grid.configuration_in_bounds(neighbour_world):
+                # En A, SparseExplorationMap solo comprueba coordenadas finitas;
+                # esta condición no consulta ni conoce el tamaño del piso.
                 obstacles.add(neighbour)
                 continue
 
@@ -543,12 +630,13 @@ class CompleteCoverageExplorer:
                 obstacles.discard(neighbour)
                 self.grid.add_free_pose(neighbour_world)
                 trajectory.append(neighbour)
+                # Descender a la nueva pose y comenzar con su primer vecino.
                 stack.append([neighbour, 0])
             else:
                 obstacles.add(neighbour)
-                # At half-cell resolution a probe is exactly one simulator
-                # movement.  Contact depends on the target footprint, so this
-                # pose is globally non-traversable in the static world.
+                # Un sondeo a 0,5 equivale a un paso del simulador: el contacto
+                # frontal corresponde a la huella en la pose objetivo. Guardar
+                # esa pose como bloqueada presupone el entorno estático de P1.
                 self.grid.add_obstacle_pose(neighbour_world)
 
         if not self.controller.simulation.is_running:
@@ -563,19 +651,30 @@ class CompleteCoverageExplorer:
 
 
 def _heuristic(a: FineKey, b: FineKey) -> int:
+    # Manhattan cuenta pasos cardinales. Ignorar obstáculos da una cota inferior
+    # del coste real: h es admisible y consistente para este grafo de coste 1.
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
 def astar(grid: OccupancyGrid, start: FloatPoint, goal: FloatPoint) -> list[FloatPoint]:
-    """Optimal four-connected A* at the map's measured planning resolution."""
+    """A* de coste mínimo sobre las poses libres conocidas, con cuatro vecinos.
+
+    La optimalidad se refiere a pasos de esta rejilla; no al camino continuo
+    más corto del apartamento. Desconocidos y contactos no son transitables.
+    """
     resolution = grid.active_resolution
     start_key = grid.world_to_key(start, resolution)
     goal_key = grid.world_to_key(goal, resolution)
     free = grid.planning_keys()
     if start_key not in free or goal_key not in free:
         raise ValueError("A* endpoints must be known FREE cells")
+    # Heap (cola de prioridad): extraer el menor f = g + h. El contador
+    # desempata prioridades iguales de forma reproducible. Inicialmente solo
+    # está el inicio, por lo que su prioridad inicial puede ser cero.
     frontier: list[tuple[int, int, FineKey]] = [(0, 0, start_key)]
     counter = 0
+    # cost guarda g, los pasos desde el inicio; came_from guarda el padre con
+    # el que reconstruiremos la ruta cuando encontremos el destino.
     came_from: dict[FineKey, FineKey | None] = {start_key: None}
     cost: dict[FineKey, int] = {start_key: 0}
 
@@ -589,6 +688,8 @@ def astar(grid: OccupancyGrid, start: FloatPoint, goal: FloatPoint) -> list[Floa
                 continue
             new_cost = cost[current] + 1
             if neighbour not in cost or new_cost < cost[neighbour]:
+                # Relajar la arista: conservar esta alternativa solo si mejora
+                # el coste de llegar al vecino, y actualizar su prioridad.
                 cost[neighbour] = new_cost
                 came_from[neighbour] = current
                 counter += 1
@@ -598,6 +699,7 @@ def astar(grid: OccupancyGrid, start: FloatPoint, goal: FloatPoint) -> list[Floa
                 )
     if goal_key not in came_from:
         raise ValueError(f"No route from {start} to {goal}")
+    # Seguir los padres del destino al inicio y después invertir la lista.
     path: list[FineKey] = []
     current: FineKey | None = goal_key
     while current is not None:
@@ -607,12 +709,12 @@ def astar(grid: OccupancyGrid, start: FloatPoint, goal: FloatPoint) -> list[Floa
 
 
 def smooth_path(grid: OccupancyGrid, path: list[FloatPoint]) -> list[FloatPoint]:
-    """Safely compress a grid path into maximal straight cardinal segments.
+    """Comprimir una ruta cardinal conservando sus cambios de dirección.
 
-    Any-angle string pulling is attractive, but an occupancy value at integer
-    centres does not certify the continuous swept volume of this 2x2 robot.
-    Keeping the A* geometry while removing redundant collinear waypoints gives
-    exact arrival and preserves the collision guarantee of the explored grid.
+    Ejemplo: (1,1), (1.5,1), (2,1), (2,1.5) -> (1,1), (2,1), (2,1.5).
+    No se crean diagonales: recorrer un segmento continuo entre muestras
+    arbitrarias podría barrer un obstáculo que no aparezca en sus extremos.
+    La función presupone una ruta cardinal válida obtenida con A*.
     """
     if len(path) <= 2:
         return path[:]
@@ -626,6 +728,7 @@ def smooth_path(grid: OccupancyGrid, path: list[FloatPoint]) -> list[FloatPoint]
             path[index + 1][1] - path[index][1],
         )
         if direction != previous_direction:
+            # Conservar la esquina; los puntos colineales son redundantes.
             result.append(path[index])
             previous_direction = direction
     result.append(path[-1])
@@ -633,6 +736,8 @@ def smooth_path(grid: OccupancyGrid, path: list[FloatPoint]) -> list[FloatPoint]
 
 
 def execute_path(controller: MotionController, points: Iterable[FloatPoint]) -> None:
+    # El robot debe estar ya en points[0]. Cada objetivo restante cierra un
+    # tramo recto; una obstrucción inesperada produce error y detención.
     points = list(points)
     if not points:
         return
@@ -643,12 +748,15 @@ def execute_path(controller: MotionController, points: Iterable[FloatPoint]) -> 
 
 @dataclass
 class RecordedRoute:
+    """Waypoints ordenados en coordenadas del mundo, asociados a un escenario."""
     name: str
     config: str
     waypoints: list[FloatPoint] = field(default_factory=list)
     created_at: float = field(default_factory=time)
 
     def add(self, point: FloatPoint) -> None:
+        # Reducir ruido numérico y evitar dos waypoints consecutivos iguales.
+        # Se conserva el orden y sí se permite volver a un punto anterior.
         candidate = (round(point[0], 3), round(point[1], 3))
         if not self.waypoints or math.dist(self.waypoints[-1], candidate) > 1e-6:
             self.waypoints.append(candidate)
@@ -671,6 +779,8 @@ class RecordedRoute:
 
     @classmethod
     def load(cls, path: str | Path) -> "RecordedRoute":
+        # Validar archivos externos antes de usarlos para controlar movimiento:
+        # necesitamos parejas numéricas finitas y un nombre de escenario local.
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         if data.get("format") != "rds-p1-waypoints":
             raise ValueError("Unsupported route format")
@@ -702,7 +812,11 @@ class RecordedRoute:
 
 def surface_cells_for_keys(keys: Iterable[FineKey], width: int, height: int,
                            resolution: float = FINE_RESOLUTION) -> set[Point]:
-    """Floor cells covered by the robot footprint at a set of poses."""
+    """Calcular suelo alcanzable bajo las huellas, solo para las métricas.
+
+    width/height son aquí dimensiones reales de la referencia de evaluación.
+    La exploración operativa usa SparseExplorationMap y no recibe esos valores.
+    """
     covered: set[Point] = set()
     for key in keys:
         x, y = OccupancyGrid.key_to_world(key, resolution)
@@ -716,7 +830,12 @@ def surface_cells_for_keys(keys: Iterable[FineKey], width: int, height: int,
 
 def reachable_truth(environment, density: int, start: FloatPoint,
                     resolution: float = FINE_RESOLUTION) -> set[FineKey]:
-    """Independent ground-truth oracle used only by tests/metrics."""
+    """Referencia geométrica para evaluar A después de terminar su recorrido.
+
+    Aquí sí se inspeccionan el tamaño y los objetos del simulador: calculamos
+    qué poses debería alcanzar un recorrido completo desde el mismo inicio.
+    Esta función nunca se llama para seleccionar movimientos de A, B o C.
+    """
     from rds2026machines import VACUUM_SIZE
 
     half = VACUUM_SIZE // 2
@@ -726,9 +845,9 @@ def reachable_truth(environment, density: int, start: FloatPoint,
                 and half <= y <= environment.size[1] - half):
             return False
         rect = pygame.Rect(0, 0, VACUUM_SIZE * density, VACUUM_SIZE * density)
-        # Match the simulator's Rect property assignment semantics.  Passing
-        # floats to the Rect constructor truncates instead of rounding and
-        # creates a subtly different oracle at half-cell positions.
+        # Reproducimos el redondeo al asignar X/Y de Rect como hace el simulador.
+        # Pasar floats directamente al constructor genera otra discretización
+        # y puede falsear la comparación en posiciones de medio paso.
         rect.x = (x - half) * density
         rect.y = (y - half) * density
         return not any(rect.colliderect(obj["bbox"]) for obj in environment.objects)
@@ -737,6 +856,8 @@ def reachable_truth(environment, density: int, start: FloatPoint,
     max_y = round((environment.size[1] - half) / resolution)
     min_key = round(half / resolution)
     free: set[FineKey] = set()
+    # Enumerar poses físicamente libres en el plano completo y después quedarse
+    # con su componente desde start: no exigir visitar regiones desconectadas.
     for key_y in range(min_key, max_y + 1):
         for key_x in range(min_key, max_x + 1):
             x, y = OccupancyGrid.key_to_world((key_x, key_y), resolution)

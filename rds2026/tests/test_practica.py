@@ -1,8 +1,10 @@
 import json
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 
 os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
 
@@ -18,6 +20,7 @@ from apartado_c import replay
 from robotica_servicios import Cell, OccupancyGrid, RecordedRoute, SparseExplorationMap, astar, smooth_path
 
 
+# Pruebas pequeñas de representaciones y planificación, sin recorrer un piso.
 class UnitTests(unittest.TestCase):
     def test_robot_state_is_not_shared(self):
         first = rds2026machines.vacuum((2, 3), 90)
@@ -60,6 +63,8 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(grid.covered_points(), {(1, 1), (1, 2), (2, 1), (2, 2)})
 
     def test_map_dimensions_are_derived_after_exploration(self):
+        # Incluir coordenadas negativas comprueba que no asumimos origen (0,0).
+        # Antes de finalize no hay ancho; después se conserva el origen al guardar.
         observations = SparseExplorationMap("cfg_test.py", (-2, 3))
         self.assertFalse(hasattr(observations, "width"))
         observations.add_free_pose((-2, 3))
@@ -88,6 +93,66 @@ class UnitTests(unittest.TestCase):
                 RecordedRoute.load(route_path)
 
 
+class NavigationRejectionTests(unittest.TestCase):
+    """B debe conservar el destino y rechazarlo antes de iniciar el simulador."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.map_path = str(Path(self.temp.name) / "disconnected.json")
+        grid = OccupancyGrid(8, 5, config_name="cfg_3.py")
+        for point in ((2, 2), (2.5, 2), (5, 2), (5.5, 2), (5, 2.5), (5.5, 2.5)):
+            grid.add_free_pose(point)
+        grid.add_obstacle_pose((3, 2))
+        grid.save(self.map_path)
+
+    def test_blocked_unknown_and_invalid_endpoints_do_not_start_simulation(self):
+        cases = (
+            ((2, 2), (3, 2), "Destino.*obstáculo"),
+            ((2, 2), (4, 2), "Destino.*no explorada"),
+            ((3, 2), (2, 2), "Origen.*obstáculo"),
+            ((2, 2), (2.75, 2), "Destino.*no se permite ajustar"),
+            ((2, 2), (2.25, 2.25), "Destino.*no se permite ajustar"),
+            ((2, 2), (8, 2), "Destino.*fuera del mapa"),
+            ((2, 2), (float("nan"), 2), "Destino.*finitas"),
+        )
+        with patch("apartado_b.rds2026environment.floorplan") as environment:
+            for start, goal, reason in cases:
+                with self.subTest(start=start, goal=goal):
+                    with self.assertRaisesRegex(ValueError, reason):
+                        navigate(self.map_path, None, start, goal, 0, True)
+            environment.assert_not_called()
+
+    def test_astar_rejects_free_destination_in_another_component(self):
+        # Los dos extremos son libres, pero no existe camino entre ellos.
+        # La versión antigua cambiaba el destino a la componente de (2, 2).
+        with patch("apartado_b.rds2026environment.floorplan") as environment:
+            with self.assertRaisesRegex(ValueError, "A\\* no encuentra una ruta"):
+                navigate(self.map_path, None, (2, 2), (5, 2), 0, True)
+            environment.assert_not_called()
+
+    def test_local_discretization_does_not_hide_disconnected_destination(self):
+        # Sus cuatro vértices son libres, pero pertenecen a otra componente.
+        with patch("apartado_b.rds2026environment.floorplan") as environment:
+            with self.assertRaisesRegex(ValueError, "zonas desconectadas"):
+                navigate(self.map_path, None, (2, 2), (5.2, 2.2), 0, True)
+            environment.assert_not_called()
+
+    def test_command_line_explains_rejection_without_traceback(self):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "apartado_b.py"), "--map", self.map_path,
+             "--start", "2,2", "--goal", "5,2", "--headless", "--fps", "0"],
+            capture_output=True, text=True, check=False,
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("[B] Destino", result.stderr)
+        self.assertIn("A* no encuentra una ruta", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+        self.assertNotIn("path_length", result.stdout)
+
+
+# Pruebas con el simulador real: descubrir cfg_3 y usar ese mapa en B y C.
+# Los archivos temporales evitan sobrescribir mapas o rutas del usuario.
 class IntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -103,6 +168,8 @@ class IntegrationTests(unittest.TestCase):
         cls.temp.cleanup()
 
     def test_complete_coverage(self):
+        # 100 % del conjunto alcanzable y ningún choque; se comprueban por
+        # separado las posiciones del centro y la superficie de su huella.
         self.assertEqual(self.coverage["coverage_percent"], 100.0)
         self.assertEqual(self.coverage["pose_coverage_percent"], 100.0)
         self.assertEqual(self.coverage["missed_cells"], 0)
@@ -116,11 +183,22 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(metrics["collisions"], 0)
 
     def test_arbitrary_points_are_safely_snapped(self):
+        # Ambas coordenadas están en intervalos con todos sus vértices libres.
         metrics = navigate(self.map_path, None, (2.2, 2.2), (11.8, 11.8), 0, True, True)
         self.assertLessEqual(metrics["start_snap_distance"], 0.36)
         self.assertLessEqual(metrics["goal_snap_distance"], 0.36)
         self.assertEqual(metrics["final_error"], 0.0)
         self.assertEqual(metrics["collisions"], 0)
+
+    def test_real_map_wall_is_rejected_instead_of_snapped(self):
+        with patch("apartado_b.rds2026environment.floorplan") as environment:
+            cases = (((9.5, 3), "obstáculo"), ((10, 3), "no explorada"),
+                     ((9.25, 3), "no se permite ajustar"))
+            for goal, reason in cases:
+                with self.subTest(goal=goal):
+                    with self.assertRaisesRegex(ValueError, f"Destino.*{reason}"):
+                        navigate(self.map_path, None, (2, 2), goal, 0, True)
+            environment.assert_not_called()
 
     def test_route_replay(self):
         route_path = Path(self.temp.name) / "route.json"

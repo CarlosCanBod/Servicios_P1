@@ -1,5 +1,5 @@
 #!/usr/bin/python
-"""Run the reproducible end-to-end acceptance suite and save its metrics."""
+"""Ejecutar A, B y C de forma reproducible y guardar sus métricas."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from apartado_b import navigate
 from apartado_c import replay
 
 
+# Casos de prueba de navegación, no pistas para la exploración del apartado A.
 ENDPOINTS = {
     "cfg_0.py": ((23, 7), (2, 26)),
     "cfg_1.py": ((2, 2), (23, 23)),
@@ -29,6 +30,8 @@ def main() -> None:
     output.mkdir(exist_ok=True)
     report = {"coverage": {}, "navigation": {}, "replay": {}}
     for config, start in DEFAULT_STARTS.items():
+        # A genera un mapa nuevo por escenario; B usa exactamente ese archivo.
+        # FPS=0 y headless=True aceleran la ejecución sin cambiar el paso físico.
         stem = Path(config).stem
         map_path = output / f"mapa_{stem}.json"
         report["coverage"][config] = run_coverage(
@@ -39,6 +42,9 @@ def main() -> None:
         report["navigation"][config] = navigate(
             str(map_path), config, nav_start, nav_goal, 0, True, True
         )
+    # Comprobar C con una ruta de ejemplo y el mapa que acaba de producir A.
+    # Este script guarda resultados; los tests de tests/test_practica.py son
+    # los que hacen aserciones y fallan si no se cumplen los criterios.
     report["replay"]["cfg_3.py"] = replay(
         "rutas/ruta_demo_cfg3.json", "resultados/mapa_cfg_3.json", 0, True
     )

@@ -48,8 +48,17 @@ arriesgar atajos diagonales cuyo volumen barrido no esté observado.
   --start 23,7 --goal 2,26
 ```
 
-Si un punto arbitrario no coincide con una celda libre se proyecta a la celda libre
-más cercana. Un destino en otra componente produce un error explícito.
+El origen y el destino deben corresponder a poses libres conocidas. Un punto
+ocupado o desconocido se rechaza antes de iniciar el simulador. Si ambos extremos
+son libres pero están en componentes desconectadas, A* informa de que no existe
+ruta; no se cambia el destino a otro punto cercano. La orden termina con código
+de salida 1 y un mensaje legible.
+
+Para coordenadas entre muestras solo se permite un ajuste local de discretización
+si todos los vértices de su intervalo son libres conocidos. Se publica la distancia
+del ajuste; no se certifica llegada continua exacta a la coordenada arbitraria.
+Un intervalo con poses bloqueadas o desconocidas se rechaza, aunque haya una pose
+libre cercana. Este tratamiento también se aplica al origen.
 
 ## Apartado C: teleoperación y reproducción
 

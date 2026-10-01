@@ -54,8 +54,10 @@ siendo inherentes al simulador. Las métricas definitivas están en
 
 1. **A* a resolución distinta del robot.** Ahora planifica sobre las poses libres
    de 0,5 medidas por A, no sobre una aproximación entera.
-2. **Destino cercano pero desconectado.** El destino se ajusta únicamente dentro
-   de la componente conexa del origen. Se publican las distancias de ajuste.
+2. **Destino imposible sustituido por otro cercano.** B valida los extremos:
+   rechaza poses ocupadas o desconocidas. Si son libres pero están desconectados,
+   A* devuelve error antes de iniciar el simulador; no se cambia el destino para
+   forzar una ruta. También se rechaza un origen ocupado o desconocido.
 3. **Mapa y escenario incompatibles.** Se valida el nombre de configuración,
    pero no se presupone que las dimensiones observadas coincidan con las del
    simulador: el mapa sólo abarca los mínimos y máximos explorados.
@@ -70,8 +72,9 @@ siendo inherentes al simulador. Las métricas definitivas están en
 - Si el mundo cambia después de mapearlo, el controlador se detiene con error
   seguro. El enunciado especifica que no hay objetos móviles, por lo que no se
   implementa D* Lite ni actualización dinámica.
-- Un punto arbitrario se proyecta a la pose de medio paso alcanzable más cercana;
-  la distancia se devuelve para que nunca sea un ajuste oculto.
+- Las coordenadas entre muestras se discretizan localmente solo cuando todos los
+  vértices de su intervalo son libres conocidos. La distancia del ajuste se
+  devuelve; no se ejecuta una llegada continua exacta al punto arbitrario.
 
 ## Apartado C
 

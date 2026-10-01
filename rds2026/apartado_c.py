@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # encoding: utf-8
-"""Apartado C: teleoperation, waypoint persistence and autonomous replay."""
+"""Apartado C: guardar waypoints durante teleoperación y reproducir la ruta."""
 
 from __future__ import annotations
 
@@ -29,6 +29,8 @@ def replay(route_path: str, map_path: str, fps: int = 60,
     if headless:
         os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     route, grid = RecordedRoute.load(route_path), OccupancyGrid.load(map_path)
+    # Una ruta contiene puntos y su escenario; la geometría navegable procede
+    # del mapa de A. Comprobamos que ambos archivos pertenecen al mismo mundo.
     if route.config != grid.config_name:
         raise ValueError("Route and map belong to different configurations")
     if Path(grid.config_name).name != grid.config_name or not Path(grid.config_name).is_file():
@@ -37,6 +39,8 @@ def replay(route_path: str, map_path: str, fps: int = 60,
         if not (grid.origin[0] <= point[0] < grid.origin[0] + grid.width
                 and grid.origin[1] <= point[1] < grid.origin[1] + grid.height):
             raise ValueError(f"Waypoint {point} lies outside the map")
+    # La reproducción inicia el robot en la pose conocida más cercana al
+    # primer waypoint. Las coordenadas originales permanecen en el archivo.
     first = grid.nearest_free(route.waypoints[0])
     floor = rds2026environment.floorplan(grid.config_name)
     robot = rds2026machines.vacuum(position=first, orientation=0)
@@ -51,10 +55,15 @@ def replay(route_path: str, map_path: str, fps: int = 60,
     snap_distances = [math.dist(route.waypoints[0], first)]
     try:
         for requested_target in route.waypoints[1:]:
+            # Se planifica cada pareja consecutiva usando la posición actual.
+            # Los waypoints guardados pueden no coincidir con la rejilla de A:
+            # se proyectan a poses libres conectadas y se mide ese ajuste.
             source = grid.nearest_free(robot.position)
             component = grid.connected_free(source)
             target = min(component, key=lambda point: math.dist(point, requested_target))
             snap_distances.append(math.dist(requested_target, target))
+            # Reutilizamos B: si hay un mueble entre dos waypoints, A* lo rodea
+            # antes de ejecutar los tramos rectos que unen los cambios de rumbo.
             path = smooth_path(grid, astar(grid, source, target))
             planned_segments += len(path) - 1
             execute_path(controller, path)
@@ -79,11 +88,15 @@ def teleoperate(config: str, start: tuple[int, int], route_path: str,
         size=(700, 700), fps=fps, environment=floor, machine=robot
     )
     route = RecordedRoute(Path(route_path).stem, Path(config).name)
+    # Guardamos el inicio automáticamente. Durante la conducción, W añade un
+    # waypoint: esta modalidad no registra todas las poses de cada fotograma.
     route.add(robot.position)
     simulation.start()
     robot.stop()
     print("[C] UP move | LEFT/RIGHT rotate | W waypoint | S save | Q save+quit")
     while simulation.is_running:
+        # KEYDOWN inicia el avance/giro; KEYUP detiene al soltar arriba.
+        # El propio simulador bloquea movimientos que producirían contacto.
         for event in simulation.read_keyboard():
             if event.type == pygame.QUIT:
                 simulation.is_running = False
@@ -106,6 +119,7 @@ def teleoperate(config: str, start: tuple[int, int], route_path: str,
             break
         simulation.update()
     robot.stop()
+    # Al salir guardamos también el punto final y persistimos la ruta en JSON.
     route.add(robot.position)
     route.save(route_path)
     simulation.stop()

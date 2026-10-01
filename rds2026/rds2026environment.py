@@ -37,9 +37,8 @@ class floorplan():
     cfg_obj_objects = []
 
     def __init__(self, config_file):
-        # The original simulator kept these mutable containers at class level.
-        # A second floorplan in the same Python process therefore inherited all
-        # walls and furniture from the first one.
+        # Cada escenario tiene sus propias listas. Si fueran compartidas por
+        # la clase, cargar varios mapas en las pruebas acumularía sus obstáculos.
         self.objects = []
         self.extra_objects = {'under': [], 'above': []}
         self.recharge_tiles = []
@@ -100,7 +99,9 @@ class floorplan():
                 obj['id'] = TILE_UNKNOWN_OBJ
                 self.cfg_obj_objects.append(obj)
 
-        # size based en cols and rows
+        # El simulador sí conoce el plano cargado para dibujar y generar sus
+        # sensores. A no usa este tamaño para reservar la matriz ni explorar:
+        # su mapa se construye únicamente a partir de las observaciones.
         self.size = (n_cols, n_rows)
     
     def init_images(self, screen):
