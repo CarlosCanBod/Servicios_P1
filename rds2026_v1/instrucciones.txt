@@ -1,0 +1,46 @@
+(linux)
+
+1. Descargar del campus virtual rds2026.zip
+	Suponemos que queda en el directorio $HOME/Descargas
+
+2. Descomprimirlo
+	cd $HOME/Descargas
+	unzip rds2026
+
+3. Tenemos que crear un entorno virtual python
+	(sudo apt-get update)
+	(sudo apt-get upgrade)
+	(sudo apt-get install python3-venv)
+	python3 -m venv tmp
+	
+4. Activarlo
+	source ./tmp/bin/activate
+
+5. Instalar librerías python necesarias
+	pip install pygame
+
+6. Probar
+	cd rds2026
+	python test1.py
+
+
+(windows)
+
+1. Descargar del campus virtual rds2026.zip
+	Suponemos que queda en el directorio Descargas
+
+2. Descomprimirlo
+
+3. Tenemos que crear un entorno virtual python
+	cd %HOMEPATH%\Downloads
+	python -m venv tmp
+
+4. Activarlo
+	tmp\Scripts\activate
+
+5. Instalar librerías python necesarias
+	pip install pygame
+
+6. Probar
+	cd rds2026
+	python test1.py
