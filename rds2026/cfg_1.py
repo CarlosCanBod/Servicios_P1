@@ -1,5 +1,11 @@
 #!/usr/bin/python
 # encoding: utf-8
+"""Segundo escenario original: datos del mundo, no información del explorador.
+
+Cada cadena de walls es una fila (Y) y cada carácter una columna (X).
+Los muebles de objects usan coord como centro; level=0 o sin level bloquea,
+level=-1 dibuja debajo y level=1 encima sin bloquear al robot.
+"""
 
 # symbols:
 #   #   walls
@@ -47,4 +53,3 @@ walls = [
 #   "file": image file (resolution of 20px per meter)
 
 objects = []
-

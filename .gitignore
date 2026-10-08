@@ -6,6 +6,8 @@ __pycache__/
 .idea
 uv.lock
 pyproject.toml
+mapa_grid.json
+mapa_grid.txt
 
 # C extensions
 *.so
@@ -160,6 +162,9 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+tmp/
+*.zip
+.antigravityignore
 
 # Spyder project settings
 .spyderproject

@@ -1,5 +1,10 @@
 #!/usr/bin/python
 # encoding: utf-8
+"""Ejemplo original de batería y depuración con reacción aleatoria al bloqueo.
+
+simulate_battery=True descuenta energía al avanzar/girar. La práctica no
+implementa retorno automático al cargador; este ejemplo no demuestra esa función.
+"""
 
 import rds2026simulation, rds2026environment, rds2026machines
 from random import randint
@@ -26,4 +31,3 @@ while simulation.is_running:
 
 # end
 simulation.stop()
-

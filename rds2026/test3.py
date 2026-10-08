@@ -1,5 +1,10 @@
 #!/usr/bin/python
 # encoding: utf-8
+"""Teleoperación original de ejemplo: giros de 15° y sin guardar waypoints.
+
+No es el apartado C final. La práctica usa apartado_c.py, con giros de 90°,
+grabación JSON y X numeradas. Aquí KEYDOWN activa la orden y KEYUP la detiene.
+"""
 
 import pygame
 import rds2026simulation, rds2026environment, rds2026machines
@@ -53,4 +58,3 @@ while simulation.is_running:
 
 # end
 simulation.stop()
-

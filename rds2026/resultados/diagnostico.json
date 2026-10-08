@@ -1,0 +1,190 @@
+{
+  "coverage": {
+    "cfg_0.py": {
+      "reachable_poses": 1308,
+      "visited_poses": 1308,
+      "pose_coverage_percent": 100.0,
+      "missed_poses": 0,
+      "unexpected_poses": 0,
+      "reachable_cells": 416,
+      "visited_cells": 416,
+      "coverage_percent": 100.0,
+      "missed_cells": 0,
+      "unexpected_cells": 0,
+      "contact_obstacles": 233,
+      "probes": 1540,
+      "trajectory_steps": 2614,
+      "simulation_frames": 2614,
+      "collisions": 0
+    },
+    "cfg_1.py": {
+      "reachable_poses": 1491,
+      "visited_poses": 1491,
+      "pose_coverage_percent": 100.0,
+      "missed_poses": 0,
+      "unexpected_poses": 0,
+      "reachable_cells": 450,
+      "visited_cells": 450,
+      "coverage_percent": 100.0,
+      "missed_cells": 0,
+      "unexpected_cells": 0,
+      "contact_obstacles": 197,
+      "probes": 1687,
+      "trajectory_steps": 2980,
+      "simulation_frames": 2980,
+      "collisions": 0
+    },
+    "cfg_2.py": {
+      "reachable_poses": 4417,
+      "visited_poses": 4417,
+      "pose_coverage_percent": 100.0,
+      "missed_poses": 0,
+      "unexpected_poses": 0,
+      "reachable_cells": 1306,
+      "visited_cells": 1306,
+      "coverage_percent": 100.0,
+      "missed_cells": 0,
+      "unexpected_cells": 0,
+      "contact_obstacles": 517,
+      "probes": 4933,
+      "trajectory_steps": 8832,
+      "simulation_frames": 8832,
+      "collisions": 0
+    },
+    "cfg_3.py": {
+      "reachable_poses": 273,
+      "visited_poses": 273,
+      "pose_coverage_percent": 100.0,
+      "missed_poses": 0,
+      "unexpected_poses": 0,
+      "reachable_cells": 117,
+      "visited_cells": 117,
+      "coverage_percent": 100.0,
+      "missed_cells": 0,
+      "unexpected_cells": 0,
+      "contact_obstacles": 119,
+      "probes": 391,
+      "trajectory_steps": 544,
+      "simulation_frames": 544,
+      "collisions": 0
+    }
+  },
+  "navigation": {
+    "cfg_0.py": {
+      "requested_start": [
+        23,
+        7
+      ],
+      "requested_goal": [
+        2,
+        26
+      ],
+      "start": [
+        23.0,
+        7.0
+      ],
+      "goal": [
+        2.0,
+        26.0
+      ],
+      "start_snap_distance": 0.0,
+      "goal_snap_distance": 0.0,
+      "astar_cells": 81,
+      "waypoints": 4,
+      "path_length": 40.0,
+      "final_error": 0.0,
+      "collisions": 0,
+      "frames": 80
+    },
+    "cfg_1.py": {
+      "requested_start": [
+        2,
+        2
+      ],
+      "requested_goal": [
+        23,
+        23
+      ],
+      "start": [
+        2.0,
+        2.0
+      ],
+      "goal": [
+        23.0,
+        23.0
+      ],
+      "start_snap_distance": 0.0,
+      "goal_snap_distance": 0.0,
+      "astar_cells": 85,
+      "waypoints": 5,
+      "path_length": 42.0,
+      "final_error": 0.0,
+      "collisions": 0,
+      "frames": 84
+    },
+    "cfg_2.py": {
+      "requested_start": [
+        2,
+        2
+      ],
+      "requested_goal": [
+        39,
+        40
+      ],
+      "start": [
+        2.0,
+        2.0
+      ],
+      "goal": [
+        39.0,
+        40.0
+      ],
+      "start_snap_distance": 0.0,
+      "goal_snap_distance": 0.0,
+      "astar_cells": 151,
+      "waypoints": 5,
+      "path_length": 75.0,
+      "final_error": 0.0,
+      "collisions": 0,
+      "frames": 150
+    },
+    "cfg_3.py": {
+      "requested_start": [
+        2,
+        2
+      ],
+      "requested_goal": [
+        12,
+        12
+      ],
+      "start": [
+        2.0,
+        2.0
+      ],
+      "goal": [
+        12.0,
+        12.0
+      ],
+      "start_snap_distance": 0.0,
+      "goal_snap_distance": 0.0,
+      "astar_cells": 41,
+      "waypoints": 5,
+      "path_length": 20.0,
+      "final_error": 0.0,
+      "collisions": 0,
+      "frames": 40
+    }
+  },
+  "replay": {
+    "cfg_3.py": {
+      "route": "demo_cfg3",
+      "waypoints": 5,
+      "segments_replayed": 4,
+      "planned_segments": 11,
+      "max_snap_distance": 0.0,
+      "final_error": 0.0,
+      "collisions": 0,
+      "frames": 100
+    }
+  }
+}

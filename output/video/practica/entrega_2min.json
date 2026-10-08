@@ -1,0 +1,137 @@
+{
+  "format": "video-entrega-p1-selection",
+  "source_video": "output/video/practica/resumen_completo.mp4",
+  "source_sha256": "9d2bdc0d339dcb05e224b83d0f038808bc1a04cb6bb7758d85ec4b10d6896ee7",
+  "source_total_frames": 8883,
+  "source_fps": 30.0,
+  "source_resolution": [
+    700,
+    700
+  ],
+  "source_clips_sha256": {
+    "output/video/practica/A_muebles.mp4": "ca64bf6187ce83c4101bb15ee69aaf3068a83eede3d901d2d53950f980b0aa57",
+    "output/video/practica/A_interior.mp4": "3875e3fe78f3ffebcb1c59549000bb3cad6e76fa7e5305461d79d4622173cd02",
+    "output/video/practica/A_laberinto.mp4": "e4529fe9564e87eb3ab717d8c416756a72faf4868376cab8c25d49dd8973287a",
+    "output/video/practica/A_pilares.mp4": "197e2546b1c4ec219f8a3319cf7f22460d8e648f3ae390c444e60fe3d1a53cc5",
+    "output/video/practica/B_muebles.mp4": "f12b2fbaae190e8383a38e4f0eca5c4d286d8ac3591152f4109b2f77a31f76f7",
+    "output/video/practica/B_interior.mp4": "8293509650578816a0014caa8bcd00e0e958051e2e250efed402a4223bb83512",
+    "output/video/practica/B_laberinto.mp4": "a06a60ab0699a5aecba6f8ed6daa958e54aaf01e3a68de0d4456bfd0439ef565",
+    "output/video/practica/B_pilares.mp4": "c2417b0cf484037b47b5c7dcba36f9372c9010b46773da3da919fabef07f4f3d",
+    "output/video/practica/C_muebles.mp4": "d12c2a9719727cb7d1e915a45bde6b46885afc18df4d9f4d6de340ee02b4f16a",
+    "output/video/practica/C_interior.mp4": "40ed9c088ea83d2ed934b5323f6c228749b48874f1552bcef58905219a169545",
+    "output/video/practica/C_laberinto.mp4": "38fa99e81f1ba00409e73c3249615008793b45962690568e04639fef668e4ede",
+    "output/video/practica/C_pilares.mp4": "2605bfad77ce9f53eb7aef66e3f70e679cc1a1415633ee96aae81548329bcc3f"
+  },
+  "selection": [
+    {
+      "name": "A · cfg_0.py (muebles)",
+      "video": "A_muebles.mp4",
+      "start": 0,
+      "end": 1427
+    },
+    {
+      "name": "B · cfg_0.py (muebles)",
+      "video": "B_muebles.mp4",
+      "start": 3690,
+      "end": 4110
+    },
+    {
+      "name": "C · cfg_0.py (muebles)",
+      "video": "C_muebles.mp4",
+      "start": 5425,
+      "end": 6268
+    },
+    {
+      "name": "C · cfg_laberinto.py",
+      "video": "C_laberinto.mp4",
+      "start": 7138,
+      "end": 8046
+    }
+  ],
+  "output_video": "output/video/practica/entrega_2min.mp4",
+  "output_sha256": "023ae89d3dae6b63714502fc25e2e6a5e27bb09645e989b0a0d6bcbbb2c7941d",
+  "output_frames": 3598,
+  "output_fps": 30.0,
+  "output_resolution": [
+    700,
+    700
+  ],
+  "duration_seconds": 119.933333,
+  "decode_verified": true,
+  "chapters": [
+    {
+      "title": "A · cfg_0.py (muebles)",
+      "source_video": "A_muebles.mp4",
+      "source_frames": [
+        0,
+        1427
+      ],
+      "output_frames": [
+        0,
+        1427
+      ],
+      "start_seconds": 0.0,
+      "end_seconds": 47.566667,
+      "frame_count": 1427,
+      "review_frames": [
+        "output/video/practica/revision/entrega_2min/A_muebles_avance.png"
+      ]
+    },
+    {
+      "title": "B · cfg_0.py (muebles)",
+      "source_video": "B_muebles.mp4",
+      "source_frames": [
+        3690,
+        4110
+      ],
+      "output_frames": [
+        1427,
+        1847
+      ],
+      "start_seconds": 47.566667,
+      "end_seconds": 61.566667,
+      "frame_count": 420,
+      "review_frames": [
+        "output/video/practica/revision/entrega_2min/B_muebles_movimiento.png",
+        "output/video/practica/revision/entrega_2min/B_muebles_rechazo.png"
+      ]
+    },
+    {
+      "title": "C · cfg_0.py (muebles)",
+      "source_video": "C_muebles.mp4",
+      "source_frames": [
+        5425,
+        6268
+      ],
+      "output_frames": [
+        1847,
+        2690
+      ],
+      "start_seconds": 61.566667,
+      "end_seconds": 89.666667,
+      "frame_count": 843,
+      "review_frames": [
+        "output/video/practica/revision/entrega_2min/C_muebles_replay_rojo.png"
+      ]
+    },
+    {
+      "title": "C · cfg_laberinto.py",
+      "source_video": "C_laberinto.mp4",
+      "source_frames": [
+        7138,
+        8046
+      ],
+      "output_frames": [
+        2690,
+        3598
+      ],
+      "start_seconds": 89.666667,
+      "end_seconds": 119.933333,
+      "frame_count": 908,
+      "review_frames": [
+        "output/video/practica/revision/entrega_2min/C_laberinto_replay_rojo.png"
+      ]
+    }
+  ],
+  "review_contact_sheet": "output/video/practica/revision/entrega_2min/contacto_entrega_2min.jpg"
+}

@@ -1,0 +1,147 @@
+#!/usr/bin/python
+# encoding: utf-8
+"""Apartado A: descubrir el mapa y recorrer las poses alcanzables mediante DFS.
+
+Orden del trabajo: observar sin matriz -> explorar -> calcular extremos ->
+crear la matriz -> evaluar y guardar. El tamaño del plano no guía la búsqueda.
+"""
+
+from __future__ import annotations
+
+import argparse
+import os
+from pathlib import Path
+
+import rds2026environment
+import rds2026machines
+import rds2026simulation
+from robotica_servicios import (
+    CompleteCoverageExplorer, MotionController, SparseExplorationMap,
+    reachable_truth, surface_cells_for_keys,
+)
+
+
+# Posiciones iniciales para las demostraciones; no son dimensiones del mapa.
+# Para otro escenario se indica su posición de partida con --start X,Y.
+DEFAULT_STARTS = {
+    "cfg_0.py": (21, 21), "cfg_1.py": (21, 21),
+    "cfg_2.py": (21, 21), "cfg_3.py": (7, 7),
+    "cfg_prueba.py": (3, 3), "cfg_pilares.py": (2, 2),
+    "cfg_pilares_grande.py": (3, 3), "cfg_laberinto.py": (3, 3)
+}
+
+
+def parse_point(raw: str) -> tuple[float, float]:
+    """Convertir '--start 21,21' en la pareja numérica (21.0, 21.0)."""
+    try:
+        x, y = raw.split(",", maxsplit=1)
+        return float(x), float(y)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("Use X,Y, for example 21,21") from exc
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Definir las opciones que se pueden consultar con --help."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--config", default="cfg_0.py")
+    parser.add_argument("--start", type=parse_point)
+    parser.add_argument("--fps", type=int, default=60, help="0 disables real-time throttling")
+    parser.add_argument("--headless", action="store_true")
+    parser.add_argument("--output", default="mapa_grid.json")
+    parser.add_argument("--legacy-output", default="mapa_grid.txt")
+    parser.add_argument("--max-probes", type=int)
+    return parser
+
+
+def run_coverage(config: str, start: tuple[float, float], fps: int,
+                 headless: bool, output: str, legacy_output: str,
+                 max_probes: int | None = None, frame_callback=None) -> dict:
+    """Ejecutar A, guardar JSON/TXT y devolver sus medidas de cobertura.
+
+    config identifica el escenario; start es la posición inicial conocida.
+    max_probes limita intentos para diagnóstico, pero no es el tamaño del mapa.
+    La referencia geométrica de evaluación se calcula DESPUÉS de explorar.
+    """
+    if headless:
+        # SDL dummy permite probar sin ventana visible; el simulador sigue
+        # actualizando el robot y sus rectángulos de contacto normalmente.
+        os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+    floor = rds2026environment.floorplan(config)
+    robot = rds2026machines.vacuum(position=start, orientation=0)
+    simulation = rds2026simulation.simulation(
+        size=(700, 700), fps=fps, environment=floor, machine=robot
+    )
+    # El simulador carga el mundo, pero el algoritmo recibe solo observaciones
+    # y un controlador. Estos conjuntos crecen sin reservar ancho ni alto.
+    observations = SparseExplorationMap(Path(config).name, start)
+    original_extra = floor.update_extra
+
+    def draw_overlay() -> None:
+        # La capa verde/roja muestra las observaciones disponibles hasta ahora;
+        # dibujar una celda no aporta información nueva a la exploración.
+        original_extra()
+        observations.draw(simulation.screen["display"], simulation.screen["window"]["density"])
+
+    floor.update_extra = draw_overlay
+    simulation.start()
+    controller = MotionController(simulation, robot, render=not headless,
+                                  frame_callback=frame_callback)
+    try:
+        # run() termina al agotar la pila DFS. finalize() reserva la matriz
+        # después de calcular los mínimos y máximos de lo observado.
+        result = CompleteCoverageExplorer(observations, controller).run(max_probes=max_probes)
+        grid = observations.finalize()
+        # Solo ahora se consulta la geometría completa como referencia de
+        # evaluación: este oráculo nunca decide hacia dónde mueve el robot.
+        truth = reachable_truth(floor, simulation.screen["window"]["density"], start)
+        truth_surface = surface_cells_for_keys(truth, floor.size[0], floor.size[1])
+        covered_surface = grid.covered_points()
+        # Distinguimos poses del centro y superficie barrida. El 100 % se mide
+        # respecto a lo alcanzable desde el inicio, no respecto a todo el piso
+        # (puede haber habitaciones desconectadas o huecos demasiado estrechos).
+        metrics = {
+            "reachable_poses": len(truth),
+            "visited_poses": len(result.visited),
+            "pose_coverage_percent": round(100 * len(result.visited & truth) / len(truth), 3),
+            "missed_poses": len(truth - result.visited),
+            "unexpected_poses": len(result.visited - truth),
+            "reachable_cells": len(truth_surface),
+            "visited_cells": len(covered_surface & truth_surface),
+            "coverage_percent": round(100 * len(covered_surface & truth_surface) / len(truth_surface), 3),
+            "missed_cells": len(truth_surface - covered_surface),
+            "unexpected_cells": len(covered_surface - truth_surface),
+            "contact_obstacles": len(result.obstacles),
+            "probes": result.probes,
+            "trajectory_steps": len(result.trajectory) - 1,
+            "simulation_frames": result.frames,
+            "collisions": robot.stats_collisions,
+        }
+        grid.metadata.update(metrics)
+        # JSON: mapa completo con origen, poses a medio paso y estados 0/1/2.
+        # TXT: cobertura binaria; 0 significa no cubierta, no obstáculo probado.
+        grid.save(output)
+        grid.save_legacy(legacy_output)
+        return metrics
+    finally:
+        # Cerrar también si falla un movimiento o el usuario interrumpe.
+        simulation.stop()
+
+
+def main() -> None:
+    """Leer argumentos, elegir el inicio y mostrar las métricas de esta ejecución."""
+    # Trabajar desde este directorio permite encontrar cfg_*.py e img/ aunque
+    # lancemos el script desde otra carpeta. No cambia el mapa del explorador.
+    os.chdir(Path(__file__).resolve().parent)
+    args = build_parser().parse_args()
+    start = args.start or DEFAULT_STARTS.get(Path(args.config).name)
+    if start is None:
+        raise SystemExit("Unknown configuration: provide --start X,Y")
+    print(f"[A] Exploring {Path(args.config).name} from {start}...")
+    metrics = run_coverage(args.config, start, args.fps, args.headless,
+                           args.output, args.legacy_output, args.max_probes)
+    for key, value in metrics.items():
+        print(f"{key}: {value}")
+
+
+if __name__ == "__main__":
+    main()

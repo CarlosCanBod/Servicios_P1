@@ -1,5 +1,10 @@
 #!/usr/bin/python
 # encoding: utf-8
+"""Ejemplo original: abrir y dibujar el mundo sin robot. No resuelve A/B/C.
+
+El bucle repinta mientras la ventana esté abierta; Q o cerrar termina.
+Para enseñar la solución final utilizar apartado_a.py, apartado_b.py y apartado_c.py.
+"""
 
 import rds2026simulation, rds2026environment, rds2026machines
 
@@ -20,4 +25,3 @@ while simulation.is_running:
 
 # end
 simulation.stop()
-

@@ -1,5 +1,10 @@
 #!/usr/bin/python
 # encoding: utf-8
+"""Ejemplo original de movimiento aleatorio, no exploración completa.
+
+vacuum_rotator cambia el rumbo al bloquearse. No guarda visitas ni un mapa,
+por lo que puede repetir zonas y no demuestra que haya cubierto todo el suelo.
+"""
 
 import rds2026simulation, rds2026environment, rds2026machines
 from random import randint
@@ -27,4 +32,3 @@ while simulation.is_running:
 
 # end
 simulation.stop()
-
