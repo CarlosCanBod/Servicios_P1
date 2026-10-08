@@ -435,12 +435,23 @@ def write_index(metrics):
                 cursor += item.get("video_info", {}).get("duration_seconds", 0)
     lines = [
         "# Vídeos de la práctica P1", "",
-        "El enunciado solo pide un «vídeo breve (screencast)» y no fija duración ni FPS. "
-        "Hay 12 demostraciones completas, una por apartado y escenario, y un resumen concatenado "
-        "que conserva los 12 clips completos en orden A/B/C. Los MP4 se codifican a 30 fps; "
+        "El campus exige un vídeo de 2 minutos. La versión principal de entrega es "
+        "[entrega_2min.mp4](entrega_2min.mp4), una selección de cuatro demostraciones completas "
+        "de las doce disponibles. "
+        "Las 12 demostraciones completas se conservan por separado y también en "
+        "[resumen_completo.mp4](resumen_completo.mp4) (4:56.1). Los MP4 se codifican a 30 fps; "
         "la velocidad indicada es pasos físicos visibles por segundo (un paso desplaza 0,5 unidades).",
-        "Rótulo: **12 ejemplos completos · A, B y C en 4 mapas**. "
-        "Resumen íntegro: [resumen_completo.mp4](resumen_completo.mp4) (4:56.1).",
+        "El corte contiene los cuatro clips completos listados abajo; omite los otros ocho clips. "
+        "Usa los MP4 individuales o el resumen ampliado para revisar cada ejecución completa.",
+        "", "## Vídeo principal para el campus (2 minutos)", "",
+        "- 00:00.0–00:47.6 — A, cfg_0.py con muebles (demostración completa).",
+        "- 00:47.6–01:01.6 — B, cfg_0.py con muebles (navegación y tres rechazos).",
+        "- 01:01.6–01:29.7 — C, cfg_0.py con muebles (grabación, guardado y replay).",
+        "- 01:29.7–01:59.9 — C, cfg_laberinto.py (grabación, guardado y replay).",
+        "Las 12 ejecuciones completas siguen disponibles en los MP4 separados y en el resumen ampliado.",
+        "Revisión visual: [hoja de las cuatro demostraciones](revision/entrega_2min/contacto_entrega_2min.jpg). "
+        "Captura B en movimiento: [B_muebles_movimiento.png](revision/entrega_2min/B_muebles_movimiento.png). "
+        "Cortes, hashes y decodificación: [entrega_2min.json](entrega_2min.json).",
         "", "## Casos", "",
     ]
     for section in "ABC":
@@ -520,8 +531,9 @@ def write_index(metrics):
         lines.append("")
     lines.extend(["Al regenerar un ejemplo con `--section` y `--scenario`, el generador sustituye el MP4 "
                   "de ese caso y sus datos propios en `datos/`, actualiza su fila de métricas e índice y "
-                  "vuelve a concatenar el resumen con el inventario completo. `--speed` solo cambia la "
-                  "velocidad visible del apartado/escenario indicado.", ""])
+                  "vuelve a concatenar el resumen con el inventario completo. Después ejecuta "
+                  "`tmp/bin/python recortar_video_entrega.py` para actualizar el corte de dos minutos. "
+                  "`--speed` solo cambia la velocidad visible del apartado/escenario indicado.", ""])
     (OUT / "INDICE.md").write_text("\n".join(lines), encoding="utf-8")
 
 

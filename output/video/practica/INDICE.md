@@ -1,7 +1,19 @@
 # Vídeos de la práctica P1
 
-El enunciado solo pide un «vídeo breve (screencast)» y no fija duración ni FPS. Hay 12 demostraciones completas, una por apartado y escenario, y un resumen concatenado que conserva los 12 clips completos en orden A/B/C. Los MP4 se codifican a 30 fps; la velocidad indicada es pasos físicos visibles por segundo (un paso desplaza 0,5 unidades).
-Rótulo: **12 ejemplos completos · A, B y C en 4 mapas**. Resumen íntegro: [resumen_completo.mp4](resumen_completo.mp4) (4:56.1).
+El campus exige un vídeo de 2 minutos. El vídeo principal de entrega es [entrega_2min.mp4](entrega_2min.mp4), una selección de cuatro demostraciones completas de las doce disponibles. Las 12 demostraciones se conservan por separado y también en [resumen_completo.mp4](resumen_completo.mp4) (4:56.1). Los MP4 se codifican a 30 fps; la velocidad indicada es pasos físicos visibles por segundo (un paso desplaza 0,5 unidades).
+
+## Vídeo principal para el campus (2 minutos)
+
+El corte contiene estos cuatro clips completos; omite los otros ocho. Los intervalos de frames son semiabiertos: se incluye el frame inicial y se excluye el frame final.
+
+- 00:00.0–00:47.6 — A, cfg_0.py con muebles, demostración completa.
+- 00:47.6–01:01.6 — B, cfg_0.py con muebles, navegación y tres rechazos.
+- 01:01.6–01:29.7 — C, cfg_0.py con muebles, grabación, guardado y replay.
+- 01:29.7–01:59.9 — C, cfg_laberinto.py, grabación, guardado y replay.
+
+Revisión visual: [hoja de las cuatro demostraciones](revision/entrega_2min/contacto_entrega_2min.jpg); además, [B durante el movimiento](revision/entrega_2min/B_muebles_movimiento.png). Los cortes, hashes del original y de los 12 clips, y verificación de decodificación están en [entrega_2min.json](entrega_2min.json).
+
+El resumen ampliado íntegro es [resumen_completo.mp4](resumen_completo.mp4), 4:56.1.
 
 ## Casos
 
