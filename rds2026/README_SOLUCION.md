@@ -83,12 +83,19 @@ Durante el replay el objetivo actual aparece en rojo y se indica su número en
 pantalla. Si C ajusta ese objetivo a otra pose del mapa, un círculo rojo y una
 línea muestran también dónde se ejecutará realmente la llegada.
 
-Reproducción autónoma (replanifica entre waypoints con el apartado B):
+Reproducción autónoma (utiliza el A* y el controlador compartidos con B):
 
 ```bash
 ../tmp/bin/python apartado_c.py replay --route rutas/mi_ruta.json \
   --map mapa_grid.json
 ```
+
+C no llama al validador de destinos de B: ajusta cada waypoint a una pose libre
+conectada con el robot. `max_snap_distance` mide el mayor ajuste y `final_error`
+el error respecto al último objetivo ejecutado. Cero error no significa llegar
+exactamente a un waypoint que se haya ajustado. Durante la conducción manual,
+el simulador impide atravesar muebles, pero sí puede contar intentos bloqueados
+como colisiones.
 
 ## Validación
 
@@ -97,10 +104,15 @@ Reproducción autónoma (replanifica entre waypoints con el apartado B):
 ../tmp/bin/python validar_practica.py
 ```
 
-La segunda orden explora los cuatro mapas, verifica poses y superficie, ejecuta
+La segunda orden explora los cuatro mapas originales, mide poses y superficie, ejecuta
 rutas largas y reproduce una ruta guardada. Los resultados quedan en
-`resultados/diagnostico.json`. La crítica completa está en
+`resultados/diagnostico.json`; ese script registra medidas, mientras que los tests
+son los que hacen aserciones. Los mapas extra se pueden ejecutar individualmente
+con A, pero no tienen casos de B definidos en este diagnóstico. La crítica está en
 `AUDITORIA_TECNICA.md`.
+
+El código contiene comentarios que explican los datos, las decisiones y las
+limitaciones; los ejemplos `test1.py` a `test4.py` no son los apartados finales.
 
 ## Decisiones y limitaciones honestas
 
@@ -108,9 +120,9 @@ rutas largas y reproduce una ruta guardada. Los resultados quedan en
 - Los objetos son estáticos, como especifica el enunciado.
 - El mapa operativo representa transitabilidad del robot, por lo que un hueco libre
   pero demasiado estrecho para la aspiradora no se etiqueta como navegable.
-- Se prioriza la seguridad del camino cardinal sobre Theta* diagonal: con sensores
-  de contacto y muestras sólo en centros enteros no existe evidencia suficiente para
-  certificar todo el volumen barrido por un segmento diagonal.
+- Se mantienen caminos horizontales y verticales: con sensores de contacto y
+  muestras cada 0,5 no se conoce necesariamente todo el espacio que ocuparía
+  el cuerpo durante un movimiento diagonal.
 - DFS ofrece completitud sobre la rejilla alcanzable, aunque no minimiza la longitud
-  total de cobertura. Una descomposición boustrophedon reduciría recorridos en mapas
-  conocidos, pero necesita geometría más completa que los sensores disponibles.
+  total de cobertura. Elegir mejor el orden de las zonas pendientes podría reducir
+  recorridos, pero eso no se ha implementado en esta versión.

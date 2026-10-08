@@ -17,6 +17,7 @@ from robotica_servicios import MotionController, OccupancyGrid, RecordedRoute, a
 
 
 def parse_point(raw: str) -> tuple[int, int]:
+    """Leer el inicio de grabación X,Y; esta interfaz pide coordenadas enteras."""
     try:
         x, y = raw.split(",", maxsplit=1)
         return int(x), int(y)
@@ -32,10 +33,13 @@ class WaypointOverlay:
     """
 
     def __init__(self, simulation, route: RecordedRoute, replay_mode: bool = False):
+        """Añadir una capa de dibujo que consulta la misma ruta que se está grabando."""
         self.simulation = simulation
         self.route = route
         self.replay_mode = replay_mode
         self.active_index: int | None = None
+        # Los índices de Python empiezan en 0; la etiqueta visible suma 1.
+        # None significa que todavía no hay objetivo activo o que hemos terminado.
         self.target: tuple[float, float] | None = None
         self.completed = False
         density = simulation.screen["window"]["density"]
@@ -52,6 +56,7 @@ class WaypointOverlay:
         simulation.environment.update_extra = draw_overlay
 
     def draw(self) -> None:
+        """Pintar X, números y estado; no mover al robot ni añadir waypoints."""
         surface = self.simulation.screen["display"]
         density = self.simulation.screen["window"]["density"]
         radius = max(6, min(11, density // 3))
@@ -106,6 +111,12 @@ class WaypointOverlay:
 
 def replay(route_path: str, map_path: str, fps: int = 60,
            headless: bool = False, frame_callback=None) -> dict:
+    """Reproducir puntos guardados usando el mapa de A y el A* compartido.
+
+    A diferencia de B, este modo aproxima cada punto a una pose de la zona
+    conectada al robot. max_snap_distance cuantifica el mayor cambio de destino;
+    final_error compara la llegada con el objetivo ejecutado, no con el original.
+    """
     if headless:
         os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     route, grid = RecordedRoute.load(route_path), OccupancyGrid.load(map_path)
@@ -146,7 +157,8 @@ def replay(route_path: str, map_path: str, fps: int = 60,
             component = grid.connected_free(source)
             target = min(component, key=lambda point: math.dist(point, requested_target))
             snap_distances.append(math.dist(requested_target, target))
-            # Reutilizamos B: si hay un mueble entre dos waypoints, A* lo rodea
+            # Reutilizamos el A* común (no resolve_endpoint de B): si hay un
+            # mueble entre dos waypoints, A* lo rodea
             # antes de ejecutar los tramos rectos que unen los cambios de rumbo.
             path = smooth_path(grid, astar(grid, source, target))
             planned_segments += len(path) - 1
@@ -172,6 +184,7 @@ def replay(route_path: str, map_path: str, fps: int = 60,
 
 def teleoperate(config: str, start: tuple[int, int], route_path: str,
                 fps: int = 30) -> None:
+    """Conducir con teclado y guardar solo inicio, puntos marcados y punto final."""
     floor = rds2026environment.floorplan(config)
     robot = rds2026machines.vacuum(position=start, orientation=0)
     simulation = rds2026simulation.simulation(
@@ -187,7 +200,8 @@ def teleoperate(config: str, start: tuple[int, int], route_path: str,
     print("[C] UP move | LEFT/RIGHT rotate 90 degrees | W waypoint | S save | Q save+quit")
     while simulation.is_running:
         # KEYDOWN inicia el avance/giro; KEYUP detiene al soltar arriba.
-        # El propio simulador bloquea movimientos que producirían contacto.
+        # El simulador impide atravesar objetos, pero sí cuenta como colisión
+        # un intento de avanzar contra ellos. Teleoperar no garantiza cero choques.
         for event in simulation.read_keyboard():
             if event.type == pygame.QUIT:
                 simulation.is_running = False
@@ -221,6 +235,7 @@ def teleoperate(config: str, start: tuple[int, int], route_path: str,
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Separar las opciones del modo record (grabar) y replay (reproducir)."""
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="mode", required=True)
     record = sub.add_parser("record")
@@ -237,6 +252,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Elegir el modo solicitado; record guarda una ruta y replay muestra medidas."""
     os.chdir(Path(__file__).resolve().parent)
     args = build_parser().parse_args()
     if args.mode == "record":

@@ -1,5 +1,12 @@
 #!/usr/bin/python
 # encoding: utf-8
+"""Escenario de prueba, no mapa aprendido ni trayectoria del robot.
+
+walls define filas del plano: #, ventanas y puertas producen obstáculos; R es
+cargador; puntos/espacios se ignoran. objects coloca imágenes por su centro
+(x,y): level=0 bloquea, level<0 va debajo, level>0 encima sin colisión.
+Solo el simulador carga esta geometría; A descubre su propio mapa al moverse.
+"""
 
 # symbols:
 #   #   walls
@@ -150,4 +157,3 @@ objects = [
         'file': './img/gato.png'
     }
 ]
-

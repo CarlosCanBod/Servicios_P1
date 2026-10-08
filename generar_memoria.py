@@ -1,14 +1,19 @@
 #!/usr/bin/python
-"""Generate the final technical report from measured diagnostic results."""
+"""Crear la memoria PDF a partir del diagnóstico guardado, sin ejecutar A/B/C.
+
+Para renovar sus medidas ejecutar antes rds2026/validar_practica.py. Este script
+solo transforma los datos en tablas, dibuja mapas y maqueta el documento.
+"""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 from PIL import Image as PILImage, ImageDraw
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
@@ -19,7 +24,6 @@ from reportlab.platypus import (
     Paragraph, Spacer, Table, TableStyle,
 )
 
-
 ROOT = Path(__file__).resolve().parent
 RESULTS = ROOT / "rds2026" / "resultados"
 OUTPUT = ROOT / "output" / "pdf" / "memoria_P1.pdf"
@@ -27,11 +31,11 @@ TMP = ROOT / "tmp" / "pdfs"
 
 
 def map_preview(map_path: Path, output_path: Path, scale: int = 10) -> None:
+    """Dibujar observaciones de A; no rellenar desconocidos con la geometría real."""
     data = json.loads(map_path.read_text(encoding="utf-8"))
     image = PILImage.new("RGB", (data["width"] * scale, data["height"] * scale), "white")
     draw = ImageDraw.Draw(image)
-    coverage = data.get("coverage", data["cells"])
-    for y, row in enumerate(coverage):
+    for y, row in enumerate(data.get("coverage", data["cells"])):
         for x, value in enumerate(row):
             draw.rectangle(
                 (x * scale, y * scale, (x + 1) * scale - 1, (y + 1) * scale - 1),
@@ -40,6 +44,7 @@ def map_preview(map_path: Path, output_path: Path, scale: int = 10) -> None:
     resolution = data.get("planning_resolution", 1.0)
     origin_x, origin_y = data.get("origin", [0, 0])
     for key_x, key_y in data.get("configuration_obstacles", []):
+        # Convertir clave a coordenada mundial y luego a píxeles locales.
         x = (key_x * resolution - origin_x) * scale
         y = (key_y * resolution - origin_y) * scale
         radius = max(1, scale // 5)
@@ -48,6 +53,7 @@ def map_preview(map_path: Path, output_path: Path, scale: int = 10) -> None:
 
 
 def header_footer(canvas, doc) -> None:
+    """Dibujar la asignatura y el número de página fuera del área de contenido."""
     canvas.saveState()
     canvas.setFont("DejaVu", 8)
     canvas.setFillColor(colors.HexColor("#536273"))
@@ -59,6 +65,7 @@ def header_footer(canvas, doc) -> None:
 
 
 def build() -> Path:
+    """Componer ocho páginas con texto explicativo y medidas leídas del JSON."""
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     TMP.mkdir(parents=True, exist_ok=True)
     metrics = json.loads((RESULTS / "diagnostico.json").read_text(encoding="utf-8"))
@@ -72,214 +79,184 @@ def build() -> Path:
     pdfmetrics.registerFont(TTFont("DejaVu-Bold", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"))
     styles = getSampleStyleSheet()
     body = ParagraphStyle("Body", parent=styles["BodyText"], fontName="DejaVu",
-                          fontSize=9.2, leading=13, alignment=TA_JUSTIFY,
-                          textColor=colors.HexColor("#243342"), spaceAfter=7)
+                          fontSize=9.7, leading=14, alignment=TA_LEFT,
+                          textColor=colors.HexColor("#243342"), spaceAfter=8)
     title = ParagraphStyle("Title", parent=styles["Title"], fontName="DejaVu-Bold",
                            fontSize=25, leading=30, alignment=TA_CENTER,
                            textColor=colors.HexColor("#173B65"))
-    subtitle = ParagraphStyle("Subtitle", parent=body, fontSize=13, leading=18,
+    subtitle = ParagraphStyle("Subtitle", parent=body, fontSize=12, leading=17,
                               alignment=TA_CENTER, textColor=colors.HexColor("#536273"))
     h1 = ParagraphStyle("H1", parent=styles["Heading1"], fontName="DejaVu-Bold",
                         fontSize=16, leading=20, textColor=colors.HexColor("#173B65"),
                         spaceBefore=4, spaceAfter=10)
     h2 = ParagraphStyle("H2", parent=styles["Heading2"], fontName="DejaVu-Bold",
                         fontSize=11, leading=14, textColor=colors.HexColor("#1E6B55"),
-                        spaceBefore=7, spaceAfter=4)
-    note = ParagraphStyle("Note", parent=body, fontSize=8.5, leading=11,
+                        spaceBefore=9, spaceAfter=5)
+    note = ParagraphStyle("Note", parent=body, fontSize=9, leading=12,
                           backColor=colors.HexColor("#EEF4FA"), borderPadding=7,
-                          borderColor=colors.HexColor("#B8CBE0"), borderWidth=0.6)
-    small = ParagraphStyle("Small", parent=body, fontSize=7.5, leading=10)
-    bullet = ParagraphStyle("Bullet", parent=body, leftIndent=13, firstLineIndent=-7,
-                            bulletIndent=3, spaceAfter=4)
+                          borderColor=colors.HexColor("#B8CBE0"), borderWidth=0.6,
+                          spaceBefore=8, spaceAfter=10)
+    caption = ParagraphStyle("Caption", parent=body, fontSize=8.3, leading=11,
+                             textColor=colors.HexColor("#536273"), spaceBefore=6,
+                             spaceAfter=10)
+    small = ParagraphStyle("Small", parent=body, fontSize=8, leading=11)
+    table_body = ParagraphStyle("TableBody", parent=small, fontSize=8, leading=10)
+    table_head = ParagraphStyle("TableHead", parent=table_body,
+                               fontName="DejaVu-Bold", textColor=colors.white)
+
+    def table(rows, widths):
+        """Ajustar texto dentro de cada celda para que no invada otras columnas."""
+        cells = [[Paragraph(escape(str(value)), table_head if index == 0 else table_body)
+                  for value in row] for index, row in enumerate(rows)]
+        result = Table(cells, colWidths=[width * cm for width in widths], repeatRows=1)
+        result.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#173B65")),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F2F6F9")]),
+            ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#B7C4D0")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        return result
 
     doc = BaseDocTemplate(str(OUTPUT), pagesize=A4, rightMargin=1.7 * cm,
-                          leftMargin=1.7 * cm, topMargin=1.55 * cm,
-                          bottomMargin=1.45 * cm, title="Memoria P1")
+                          leftMargin=1.7 * cm, topMargin=1.65 * cm,
+                          bottomMargin=1.5 * cm, title="Memoria P1",
+                          author="Alejandro Lavandeira Casais; Carlos Adrián Cancela Bodlak; Yago Martínez Pena")
     frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="normal")
     doc.addPageTemplates(PageTemplate(id="main", frames=frame, onPage=header_footer))
     story = []
 
-    story += [Spacer(1, 2.0 * cm), Paragraph("Práctica P1", title),
+    # Los nombres de portada son texto, no otra tabla de resultados sin título.
+    story += [Spacer(1, 1.8 * cm), Paragraph("Práctica P1", title),
               Paragraph("Navegación en entornos complejos", title), Spacer(1, 0.5 * cm),
-              Paragraph("Mapeo y cobertura, navegación punto a punto y teleoperación", subtitle),
-              Spacer(1, 1.2 * cm)]
-    cover_table = Table([
-        ["Asignatura", "Robótica de Servizos"],
-        ["Curso", "2026/2027"],
-        ["Autor confirmado", "Alejandro Lavandeira"],
-        ["Entorno", "Python 3.12.3, Pygame 2.6.1"],
-    ], colWidths=[4.3 * cm, 10.2 * cm])
-    cover_table.setStyle(TableStyle([
-        ("FONT", (0, 0), (-1, -1), "DejaVu", 9),
-        ("FONT", (0, 0), (0, -1), "DejaVu-Bold", 9),
-        ("BACKGROUND", (0, 0), (0, -1), colors.HexColor("#E8F0F8")),
-        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#AFC0D2")),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("PADDING", (0, 0), (-1, -1), 7),
-    ]))
-    story += [cover_table, Spacer(1, 1.1 * cm),
-              Paragraph("Nota de entrega: completar en portada los demás integrantes del equipo antes de subir el ZIP.", note),
+              Paragraph("Mapeo, navegación y teleoperación de una aspiradora", subtitle),
+              Spacer(1, 1.0 * cm), Paragraph("Robótica de Servizos · Curso 2026/2027", subtitle),
+              Spacer(1, 0.6 * cm),
+              Paragraph("Alejandro Lavandeira Casais<br/>Carlos Adrián Cancela Bodlak<br/>Yago Martínez Pena", subtitle),
               Spacer(1, 1.0 * cm), Paragraph("Resumen", h1),
-              Paragraph("Se presenta una solución integral para una aspiradora con odometría y tres sensores de contacto. El seguidor de paredes inicial se sustituyó por cobertura completa sobre una rejilla del espacio de configuración; la navegación utiliza A* y la teleoperación guarda waypoints que se reproducen con el mismo planificador. La validación recorre los cuatro escenarios proporcionados: alcanza el 100% de las posiciones transitables, completa rutas largas con error final nulo y no registra colisiones durante navegación ni reproducción.", body),
-              PageBreak()]
+              Paragraph("Esta práctica consiste en conseguir que una aspiradora explore un piso, se desplace entre dos puntos y repita una ruta marcada por el usuario. El robot tiene un cuerpo de 2x2 unidades y avanza 0,5 unidades por ciclo. Para decidir si puede moverse utiliza sus sensores de contacto y su posición simulada.", body),
+              Paragraph("En A guarda las posiciones que descubre y crea la matriz cuando termina de explorar. En B busca un camino en ese mapa con A*. En C permite conducir con el teclado, guardar puntos de paso y volver a recorrerlos. Los giros manuales son de 90 grados y los puntos se muestran con una X numerada.", body),
+              Paragraph("Las pruebas de los cuatro escenarios originales no dejan celdas alcanzables sin cubrir. Las rutas de navegación y la reproducción ensayadas terminan sin colisiones registradas. Estos resultados tienen límites: no se descubren habitaciones desconectadas y el simulador no introduce errores de posición.", body),
+              Spacer(1, 0.4 * cm), Paragraph("Entorno de ejecución: Python 3.12 y Pygame 2.6.1.", small), PageBreak()]
 
-    story += [Paragraph("1. Requisitos y diseño global", h1),
-              Paragraph("El enunciado solicita: (A) distinguir celdas ocupadas y libres y cubrir la superficie; (B) desplazarse entre dos puntos arbitrarios sorteando obstáculos; y (C) teleoperar, guardar rutas y recuperarlas. La evaluación usa también entornos no proporcionados, por lo que se evitó codificar trayectorias específicas.", body),
-              Paragraph("Arquitectura", h2)]
-    architecture = Table([
-        ["Capa", "Responsabilidad", "Implementación"],
-        ["Simulador", "Dinámica, contacto y odometría", "rds2026machines.py"],
-        ["Modelo", "Rejilla segura para el centro del robot", "OccupancyGrid"],
-        ["Exploración", "Descubrir y cubrir todo lo alcanzable", "CompleteCoverageExplorer"],
-        ["Planificación", "Ruta óptima conocida", "A* + compresión cardinal"],
-        ["Control", "Giro y avance con realimentación", "MotionController"],
-        ["Persistencia", "Mapas y waypoints versionados", "JSON + escritura atómica"],
-    ], colWidths=[2.5 * cm, 6.1 * cm, 6.0 * cm], repeatRows=1)
-    architecture.setStyle(TableStyle([
-        ("FONT", (0, 0), (-1, -1), "DejaVu", 8),
-        ("FONT", (0, 0), (-1, 0), "DejaVu-Bold", 8),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#173B65")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F2F6F9")]),
-        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#B7C4D0")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("PADDING", (0, 0), (-1, -1), 5),
-    ]))
-    story += [architecture, Paragraph("Correcciones del simulador", h2),
-              Paragraph("Se eliminaron contenedores mutables compartidos entre robots y planos, se inicializaron posición y orientación del sensor por instancia, se corrigió la coordenada Y de recarga y se anuló el ruido trigonométrico en movimientos cardinales. Además, el cálculo de contacto futuro se realiza en una sola conversión a rectángulo: el doble redondeo anterior hacía algunas aristas transitables sólo en un sentido.", body),
-              Paragraph("La solución sólo usa el oráculo geométrico del plano en la batería de evaluación. La exploración operativa decide con posición odométrica y contactos; no consulta los objetos del entorno.", note),
-              PageBreak()]
+    story += [Paragraph("1. Diseño de la práctica", h1),
+              Paragraph("El enunciado divide el trabajo en tres partes. A debe descubrir y recorrer el entorno; B debe ir de un origen a un destino sorteando obstáculos; C debe guardar y recuperar rutas construidas mediante teleoperación. Se utiliza la opción de planificación sobre un mapa para B y la de marcar puntos de paso para C.", body),
+              Paragraph("Qué información conoce el robot", h2),
+              Paragraph("La odometría es la estimación de posición y orientación que proporcionan los sensores de movimiento. Aquí coincide con la posición real del simulador: no hay ruido ni errores acumulados. Los sensores de contacto indican si el siguiente avance está bloqueado, pero no dan la distancia a un mueble ni su forma completa.", body),
+              Paragraph("El simulador conoce el plano para dibujarlo y producir los sensores. El explorador no recibe su ancho, alto ni lista de muebles. Guarda coordenadas mientras recorre el piso; al terminar calcula los límites de lo observado y reserva la matriz.", body),
+              Paragraph("Organización del código", h2),
+              Paragraph("La tabla 1 indica dónde está cada tarea. Los tres scripts llaman a funciones compartidas: así B y C ejecutan los caminos con el mismo controlador, en lugar de tener dos formas distintas de mover el robot.", body)]
+    architecture = table([
+        ["Parte", "Qué hace", "Dónde se implementa"],
+        ["Simulador", "Carga el mundo, genera sensores y mueve el robot.", "rds2026environment.py, rds2026machines.py, rds2026simulation.py"],
+        ["A", "Explora, guarda observaciones y crea el mapa final.", "apartado_a.py; SparseExplorationMap y CompleteCoverageExplorer"],
+        ["B", "Valida extremos, busca el camino y lo ejecuta.", "apartado_b.py; astar y MotionController"],
+        ["C", "Graba puntos y planifica entre ellos al reproducir.", "apartado_c.py; RecordedRoute y WaypointOverlay"],
+        ["Pruebas", "Comprueba funciones y mide recorridos completos.", "tests/test_practica.py y validar_practica.py"],
+    ], [2.1, 6.4, 8.7])
+    story += [KeepTogether([architecture, Paragraph("Tabla 1. Distribución de responsabilidades. Las clases y funciones compartidas están en robotica_servicios.py.", caption)]),
+              Paragraph("A partir del simulador original se corrigió el estado compartido entre instancias y el redondeo de la posición futura. Este último podía permitir un paso al ir y bloquearlo al volver. Son cambios del modelo simulado; no aportan al explorador información que todavía no haya observado.", body), PageBreak()]
 
-    story += [Paragraph("2. Apartado A: mapeo y cobertura", h1),
-              Paragraph("Representación", h2),
-              Paragraph("El explorador desconoce las dimensiones del piso: conserva poses libres, contactos y celdas cubiertas en conjuntos dispersos de coordenadas odométricas. Terminada la exploración, calcula los mínimos y máximos observados en ambos ejes y sólo entonces crea la matriz densa con su origen. El simulador conoce el tamaño para dibujar, pero no se lo entrega al algoritmo. El mapa distingue poses libres del centro cada 0,5 celdas y suelo cubierto por la huella 2x2; además conserva el estado desconocido separado del obstáculo.", body),
-              Paragraph("Algoritmo de cobertura", h2),
-              Paragraph("Se emplea exploración en línea mediante un árbol de expansión con retroceso (DFS). Desde cada pose se prueban los cuatro vecinos cardinales a distancia 0,5, que coincide con un paso físico del simulador. El sensor frontal se consulta antes de mandar el avance: una pose libre se añade al árbol y una ocupada se registra sin impacto. Al agotar los vecinos se vuelve al padre. El algoritmo termina cuando la pila queda vacía.", body),
-              Paragraph("La primera implementación sólo ramificaba en centros enteros. Aunque atravesaba poses intermedias, no podía explorar desde ellas y omitía cuatro celdas de superficie en cfg_0. La nueva rejilla de medio paso cubre todas las poses y toda la huella alcanzable.", note),
-              Paragraph("Propiedades y complejidad", h2),
-              Paragraph("Para V posiciones alcanzables y E transiciones candidatas, el coste de búsqueda es O(V+E) y la memoria O(V). El recorrido no es de longitud mínima, pero sí finito, reproducible y completo sobre la discretización. Frente al seguimiento de pared, puede abandonar contornos, cubrir interiores y cerrar ramas mediante backtracking.", body),
-              Paragraph("Visualización de mapas resultantes", h2)]
+    story += [Paragraph("2. Apartado A: descubrir y cubrir", h1),
+              Paragraph("Posición del robot y celda de suelo", h2),
+              Paragraph("No son lo mismo. Una pose es una posición del centro del robot. Que sea libre significa que cabe el cuerpo completo. Una celda puede quedar cubierta por un lateral aunque el centro nunca pase por ella. La cobertura usa las mismas cuatro muestras bajo el cuerpo que el simulador; no calcula un área continua exacta.", body),
+              Paragraph("Antes de crear la matriz", h2),
+              Paragraph("SparseExplorationMap mantiene tres conjuntos sin duplicados: fine_free para centros visitados, fine_obstacles para centros bloqueados y covered para suelo cubierto. Las poses usan claves enteras: (21,5; 21) se representa como (43; 42), porque cada unidad de clave equivale a 0,5 unidades del mundo.", body),
+              Paragraph("Al acabar, finalize calcula los mínimos y máximos de las celdas cubiertas y las poses observadas. El ancho es max_x - min_x + 1; el alto se calcula igual. El origen guardado permite traducir coordenadas del mundo a filas y columnas. El TXT tiene 1 para suelo cubierto y 0 para suelo sin cobertura registrada. El JSON guarda también desconocido, libre y bloqueado (0, 1 y 2) y las poses de medio paso.", body),
+              Paragraph("Cómo recorre el entorno", h2),
+              Paragraph("La búsqueda en profundidad, o DFS, prueba los cuatro vecinos de cada pose. Si puede avanzar, guarda la nueva pose y continúa desde ella. Al agotar sus vecinos vuelve físicamente a la posición anterior. Una pila recuerda esas ramas pendientes; cuando queda vacía, termina. Esto recorre bordes e interior, pero no es un seguidor de paredes ni un barrido por filas.", body),
+              Paragraph("Probar vecinos cada 0,5 unidades permite explorar desde posiciones intermedias que antes se atravesaban sin examinar sus salidas. La figura 1 muestra el suelo cubierto y las poses bloqueadas. El rojo marca centros donde no cabe el robot, no la silueta exacta de los muebles.", body)]
     images = []
     for index, preview in enumerate(previews):
-        img = Image(str(preview), width=3.4 * cm, height=3.4 * cm)
-        images.append([img, Paragraph(f"cfg_{index}", small)])
-    grid_table = Table([[item[0] for item in images], [item[1] for item in images]],
-                       colWidths=[3.8 * cm] * 4)
-    grid_table.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER")]))
-    story += [grid_table, Paragraph("Verde: superficie barrida por la huella; rojo: pose de contacto observada; gris: desconocido o inaccesible. La capa JSON conserva por separado las poses navegables.", small),
-              PageBreak()]
+        # Conservar proporciones del mapa, aunque su rectángulo no sea cuadrado.
+        with PILImage.open(preview) as source:
+            factor = 3.35 * cm / max(source.size)
+            width, height = (value * factor for value in source.size)
+        images.append([Image(str(preview), width=width, height=height), Paragraph(f"cfg_{index}", small)])
+    gallery = Table([[item[0] for item in images], [item[1] for item in images]], colWidths=[4.15 * cm] * 4)
+    gallery.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "CENTER"), ("VALIGN", (0, 0), (-1, -1), "BOTTOM")]))
+    story += [KeepTogether([gallery, Paragraph("Figura 1. Mapas observados tras explorar. Verde: suelo con cobertura registrada. Rojo: poses bloqueadas del centro. Gris: suelo sin cobertura registrada; no demuestra que sea un obstáculo.", caption)]), PageBreak()]
 
-    story += [Paragraph("3. Apartado B: navegación punto a punto", h1),
-              Paragraph("Planificación", h2),
-              Paragraph("B rechaza extremos ocupados o desconocidos y deja que A* detecte la falta de conexión entre poses libres, sin sustituir el destino por otro cercano. Una coordenada entre muestras sólo se discretiza localmente si todos los vértices de su intervalo son libres conocidos; se informa del ajuste y no se certifica llegada continua exacta al punto arbitrario. A* usa vecinos cardinales de coste unitario y heurística Manhattan admisible y consistente, obteniendo una ruta de coste mínimo en la rejilla medida.", body),
-              Paragraph("Reducción de giros", h2),
-              Paragraph("Después de A* se eliminan waypoints colineales y se conservan sólo los cambios de dirección. Se estudió Theta* para producir diagonales, pero se descartó como modo predeterminado: incluso con muestras cada 0,5, un mapa táctil discreto no certifica todo el volumen continuo barrido por un robot 2x2. La compresión cardinal conserva la seguridad y obtuvo cero colisiones.", body),
-              Paragraph("Control de movimiento", h2),
-              Paragraph("Cada tramo se ejecuta en lazo cerrado: se calcula el rumbo, se aplica el giro mínimo, se consulta contacto antes de cada paso y se detiene al alcanzar exactamente el objetivo. Todos los waypoints están alineados con el paso de 0,5 celdas.", body),
-              Paragraph("Resultado representativo", h2)]
-    nav_rows = [["Mapa", "Origen - destino", "Celdas A*", "Tramos", "Longitud", "Error", "Col."]]
+    story += [Paragraph("3. Apartado B: ir de un punto a otro", h1),
+              Paragraph("Comprobar los extremos", h2),
+              Paragraph("Antes de mover el robot se comprueban el origen y el destino. Un punto fuera del mapa, bloqueado o desconocido se rechaza. Si ambos son libres pero están separados por paredes sin paso, A* informa de que no hay camino. No se sustituye el destino por otro cercano para dar la ruta por completada.", body),
+              Paragraph("Los puntos entre muestras admiten un ajuste local solo si todos los vértices que los rodean son libres conocidos. Por ejemplo, una coordenada 2,2 puede aproximarse a 2 o 2,5. Se informa de la distancia del ajuste. Esto no demuestra llegada exacta a cualquier coordenada continua y también se aplica al origen.", body),
+              Paragraph("Cómo decide A*", h2),
+              Paragraph("Cada pose libre es un nodo y sus cuatro vecinos son las posibles transiciones. A* prioriza la suma de los pasos ya recorridos y una estimación de los que faltan. Esa estimación suma las diferencias horizontal y vertical hasta el destino: es la distancia Manhattan. Al ignorar obstáculos no sobreestima el recorrido. A* obtiene un camino mínimo en la rejilla, no necesariamente el camino continuo más corto.", body),
+              Paragraph("Después se quitan puntos intermedios de la misma recta y se conservan las esquinas, sin crear diagonales. El controlador gira hacia cada esquina, consulta el contacto antes de cada avance y comprueba la posición para detenerse al llegar. Si un tramo falla, no sigue con el resto de la ruta.", body),
+              Paragraph("Qué muestran las pruebas", h2),
+              Paragraph("La tabla 2 recoge un recorrido por escenario. Poses cuenta las posiciones de A*, incluyendo el origen. Tramos cuenta las rectas después de quitar puntos intermedios. Longitud y error se expresan en unidades del mundo; el error compara la posición final con el destino ejecutado en la rejilla. Colisiones es el contador del simulador.", body)]
+    nav_rows = [["Mapa", "Origen → destino", "Poses", "Tramos", "Longitud", "Error", "Colisiones"]]
     for config, data in metrics["navigation"].items():
-        nav_rows.append([
-            config.replace(".py", ""), f"{tuple(data['start'])} - {tuple(data['goal'])}",
-            str(data["astar_cells"]), str(data["waypoints"] - 1), str(data["path_length"]),
-            str(data["final_error"]), str(data["collisions"]),
-        ])
-    nav_table = Table(nav_rows, colWidths=[1.5 * cm, 4.6 * cm, 1.8 * cm, 1.5 * cm, 1.7 * cm, 1.5 * cm, 1.1 * cm])
-    nav_table.setStyle(TableStyle([
-        ("FONT", (0, 0), (-1, -1), "DejaVu", 7.5), ("FONT", (0, 0), (-1, 0), "DejaVu-Bold", 7.5),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#173B65")), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#B7C4D0")), ("ALIGN", (2, 1), (-1, -1), "CENTER"),
-        ("PADDING", (0, 0), (-1, -1), 4),
-    ]))
-    story += [nav_table, PageBreak()]
+        nav_rows.append([config.replace(".py", ""), f"{tuple(data['start'])} → {tuple(data['goal'])}",
+                         data["astar_cells"], data["waypoints"] - 1, data["path_length"],
+                         data["final_error"], data["collisions"]])
+    story += [KeepTogether([table(nav_rows, [1.65, 5.25, 1.75, 1.85, 2.2, 1.75, 2.75]),
+              Paragraph("Tabla 2. Navegación sobre mapas descubiertos en A. Los pares mostrados están alineados con la rejilla: en estos casos no hay ajuste de los extremos.", caption)]),
+              Paragraph(f"Por ejemplo, en cfg_2 hay {metrics['navigation']['cfg_2.py']['astar_cells']} poses: son {metrics['navigation']['cfg_2.py']['astar_cells'] - 1} avances de 0,5 unidades, es decir, {metrics['navigation']['cfg_2.py']['path_length']:g} unidades de recorrido. Tras comprimirlo quedan {metrics['navigation']['cfg_2.py']['waypoints'] - 1} tramos rectos. En los cuatro casos de la tabla 2 el error final y las colisiones registradas son cero.", body), PageBreak()]
 
-    story += [Paragraph("4. Apartado C: teleoperación y rutas", h1),
-              Paragraph("Grabación", h2),
-              Paragraph("El usuario controla el robot con las flechas, añade waypoints con W y guarda con S o Q. Los puntos se dibujan con una X azul numerada, incluyendo el inicio automático como punto 1. En el replay el objetivo actual se resalta en rojo; si se ajusta su posición, se muestra también la pose ejecutada. Se almacena una ruta JSON versionada con nombre, escenario, fecha y coordenadas. Se omiten puntos consecutivos duplicados y la escritura usa un fichero temporal para evitar archivos parciales.", body),
-              Paragraph("Reproducción autónoma", h2),
-              Paragraph("La reproducción no copia órdenes de teclado: carga cada waypoint y llama al planificador del apartado B entre la posición actual y el siguiente objetivo. Así puede rodear obstáculos, valida que mapa y ruta pertenezcan al mismo escenario y reutiliza exactamente el controlador ya probado.", body),
-              Paragraph("Controles", h2)]
-    controls = Table([
-        ["Entrada", "Acción"], ["Arriba", "Avanzar mientras está pulsada"],
-        ["Izquierda / derecha", "Girar 90 grados"], ["W", "Añadir waypoint"],
-        ["S", "Guardar ruta"], ["Q", "Añadir punto final, guardar y salir"],
-    ], colWidths=[4.5 * cm, 10.0 * cm])
-    controls.setStyle(TableStyle([
-        ("FONT", (0, 0), (-1, -1), "DejaVu", 8.5), ("FONT", (0, 0), (-1, 0), "DejaVu-Bold", 8.5),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1E6B55")), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F1F7F4")]),
-        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#B7C4D0")), ("PADDING", (0, 0), (-1, -1), 5),
-    ]))
     replay = metrics["replay"]["cfg_3.py"]
-    story += [controls, Paragraph("Prueba de reproducción", h2),
-              Paragraph(f"La ruta de demostración contiene {replay['waypoints']} waypoints y {replay['segments_replayed']} desplazamientos principales. Finalizó con error {replay['final_error']}, {replay['collisions']} colisiones y {replay['frames']} frames de simulación.", body),
-              Paragraph("Los ficheros inválidos, vacíos o pertenecientes a otro escenario se rechazan con un error explicativo.", note),
-              PageBreak()]
+    story += [Paragraph("4. Apartado C: conducir y repetir", h1),
+              Paragraph("Guardar puntos de paso", h2),
+              Paragraph("Un waypoint es un punto de paso que queremos que el robot visite después. No se guarda cada posición de la conducción: se guarda el inicio, los puntos marcados con W y el punto final al salir. El JSON incluye nombre de ruta, escenario, fecha y lista ordenada de coordenadas. Dos puntos consecutivos iguales no se repiten.", body),
+              Paragraph("La tabla 3 resume el teclado. Los giros de 90 grados mantienen las cuatro direcciones principales cuando se parte de orientación cero. Soltar la flecha de avance detiene el robot; S guarda sin cerrar la grabación.", body)]
+    controls = table([
+        ["Tecla", "Acción"], ["Flecha arriba", "Avanzar mientras se mantiene pulsada."],
+        ["Izquierda / derecha", "Girar +90 / -90 grados por pulsación."],
+        ["W", "Guardar la posición actual como waypoint."],
+        ["S", "Guardar la ruta y seguir conduciendo."],
+        ["Q / cerrar ventana", "Guardar el punto final y salir."],
+        ["D", "Mostrar u ocultar los rectángulos de los sensores."],
+    ], [5.0, 12.2])
+    story += [KeepTogether([controls, Paragraph("Tabla 3. Controles del modo record de apartado_c.py.", caption)]),
+              Paragraph("Cada punto aparece con una X azul y su número, empezando por el inicio como punto 1. En replay el siguiente objetivo es rojo. Si la ruta vuelve a una coordenada, se muestran allí todos sus números. La numeración corresponde al archivo, no a las esquinas internas del camino de A*.", body),
+              Paragraph("Reproducir la ruta", h2),
+              Paragraph("replay carga mapa y ruta, comprueba que correspondan al mismo escenario y usa el A* y el controlador compartidos entre puntos consecutivos. No repite pulsaciones ni garantiza seguir exactamente la trayectoria manual: puede rodear un mueble por otro camino.", body),
+              Paragraph("C tiene una diferencia importante respecto a B: aproxima cada waypoint a una pose libre conectada con el robot. Puede acabar en un punto distinto al guardado si el mapa no lo contiene. max_snap_distance informa del mayor ajuste; una línea y un círculo rojos muestran el objetivo ejecutado cuando cambia. El error final compara la llegada con ese objetivo ajustado.", note),
+              Paragraph(f"La ruta de prueba de cfg_3 tiene {replay['waypoints']} waypoints y {replay['segments_replayed']} trayectos entre ellos. El mayor ajuste fue {replay['max_snap_distance']} unidades y el error final fue {replay['final_error']} unidades, con {replay['collisions']} colisiones. Se ejecutaron {replay['frames']} ciclos de avance del controlador; no es una duración en segundos.", body), PageBreak()]
 
-    story += [Paragraph("5. Metodología y resultados", h1),
-              Paragraph("Se añadió una prueba unitaria para estado por instancia, A*, compresión del camino y persistencia; las pruebas de integración ejecutan cobertura, navegación y replay. El diagnóstico completo calcula el conjunto realmente alcanzable a partir de la geometría, pero ese oráculo está confinado a la evaluación.", body)]
-    cov_rows = [["Mapa", "Poses", "Celdas", "Cobertura", "Omitidas", "Pasos", "Colisiones"]]
+    story += [Paragraph("5. Pruebas y resultados", h1),
+              Paragraph("Cómo se mide la cobertura", h2),
+              Paragraph("Al terminar A, una función de evaluación consulta la geometría real y calcula qué poses libres están conectadas con el inicio. Después calcula las celdas bajo las muestras de sus huellas. Es la referencia con la que se compara lo visitado. Se calcula después de explorar: no ayuda a elegir movimientos ni a crear la matriz.", body),
+              Paragraph("La tabla 4 distingue ambas medidas. Poses alcanzables cuenta posiciones diferentes del centro; suelo alcanzable cuenta celdas diferentes que se pueden cubrir. Cobertura es el porcentaje de ese suelo cubierto. Omitidas cuenta celdas alcanzables no cubiertas. Pasos cuenta avances físicos, incluidos retrocesos, por lo que puede superar el número de poses.", body)]
+    cov_rows = [["Mapa", "Poses alcanzables", "Suelo alcanzable", "Cobertura", "Omitidas", "Pasos", "Colisiones"]]
     for config, data in metrics["coverage"].items():
-        cov_rows.append([
-            config.replace(".py", ""), str(data["reachable_poses"]), str(data["reachable_cells"]),
-            f"{data['coverage_percent']:.1f}%", str(data["missed_cells"]),
-            str(data["trajectory_steps"]), str(data["collisions"]),
-        ])
-    cov_table = Table(cov_rows, colWidths=[1.5 * cm, 2.0 * cm, 1.8 * cm, 1.8 * cm, 1.6 * cm, 1.7 * cm, 1.8 * cm])
-    cov_table.setStyle(TableStyle([
-        ("FONT", (0, 0), (-1, -1), "DejaVu", 7.7), ("FONT", (0, 0), (-1, 0), "DejaVu-Bold", 7.7),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#173B65")), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F2F6F9")]),
-        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#B7C4D0")), ("ALIGN", (1, 1), (-1, -1), "CENTER"),
-        ("PADDING", (0, 0), (-1, -1), 4),
-    ]))
-    story += [cov_table, Paragraph("Interpretación", h2),
-              Paragraph("Los cuatro escenarios alcanzan el 100% tanto en poses de medio paso como en superficie, sin omisiones ni visitas imposibles. El apartado A consulta el volumen frontal antes de moverse y termina con cero colisiones; B y C también terminan sin contacto.", body),
-              Paragraph("Casos diagnosticados durante el desarrollo", h2)]
-    for text in [
-        "Posición inicial fuera de cfg_3 y mapa exportado de otro escenario.",
-        "Estado mutable compartido entre instancias del simulador.",
-        "Doble redondeo que generaba aristas no reversibles.",
-        "Confusión entre aproximación bloqueada y celda globalmente ocupada.",
-        "Atajos diagonales que no respetaban el volumen barrido del robot.",
-    ]:
-        story.append(Paragraph("• " + text, bullet))
-    story += [Spacer(1, 4), Paragraph("Criterios de aceptación: cobertura de poses=100%, cobertura de superficie=100%, omitidas=0, visitas imposibles=0, error final=0 y colisiones=0 en A/B/C.", note),
-              PageBreak()]
+        cov_rows.append([config.replace(".py", ""), data["reachable_poses"], data["reachable_cells"],
+                         f"{data['coverage_percent']:.1f}%", data["missed_cells"],
+                         data["trajectory_steps"], data["collisions"]])
+    story += [KeepTogether([table(cov_rows, [1.65, 2.6, 2.6, 2.55, 2.1, 2.1, 3.6]),
+              Paragraph("Tabla 4. Cobertura de A en los cuatro escenarios originales, con el inicio definido para cada uno. Suelo alcanzable y omitidas se expresan en celdas.", caption)]),
+              Paragraph("En cfg_0 hay 1.308 posiciones distintas del centro, pero 416 celdas de suelo alcanzables. Se hacen 2.614 avances porque el robot vuelve por las ramas exploradas. Como muestra la tabla 4, no quedan celdas alcanzables omitidas. La comparación de poses también da 100 % y no encuentra visitas fuera de la referencia en estos cuatro casos.", body),
+              Paragraph("Por qué puede haber zonas grises", h2),
+              Paragraph("El 100 % no se refiere a todas las celdas del piso. Una habitación aislada o un hueco demasiado estrecho no pertenece al conjunto alcanzable desde el inicio. El gris de la figura 1 indica que no se ha registrado cobertura; por sí solo no permite decidir si hay un obstáculo o suelo libre al que no se puede llegar.", body),
+              Paragraph("Pruebas automáticas y diagnóstico", h2),
+              Paragraph("Los tests comprueban que dos robots no compartan sensores, que guardar y cargar conserve los datos, que la matriz se cree al final y que A* rodee obstáculos. También prueban rechazos de B y una ejecución completa de A, B y C en cfg_3. Usan aserciones: comparaciones entre el resultado obtenido y el esperado que hacen fallar la prueba si no coinciden.", body),
+              Paragraph("validar_practica.py ejecuta los cuatro casos de las tablas 2 y 4 y el replay de ejemplo. Guarda medidas en resultados/diagnostico.json, pero no sustituye a los tests: registrar un resultado no equivale a comprobar automáticamente que sea correcto.", body), PageBreak()]
 
-    story += [Paragraph("6. Limitaciones y mejoras", h1),
-              Paragraph("Limitaciones", h2)]
-    for text in [
-        "La odometría del simulador es perfecta; no hay ruido, deriva ni localización probabilista.",
-        "Los sensores son de contacto. El interior de obstáculos y regiones aisladas permanece honestamente desconocido.",
-        "La cobertura DFS es completa pero puede recorrer cada arista del árbol dos veces y no minimiza energía.",
-        "El mundo es estático; no se mantiene un mapa temporal de personas u objetos móviles.",
-        "El sensor sólo informa del siguiente volumen frontal; no ofrece distancia ni geometría del obstáculo.",
-    ]:
-        story.append(Paragraph("• " + text, bullet))
-    story += [Paragraph("Mejoras con más tiempo", h2)]
-    for text in [
-        "Sustituir sondeos táctiles por lidar/sonar simulado y un mapa probabilista log-odds.",
-        "Aplicar descomposición boustrophedon o Spanning Tree Coverage optimizado para reducir distancia.",
-        "Añadir SLAM, estimación de pose y replanteo incremental D* Lite para obstáculos dinámicos.",
-        "Optimizar la secuencia de fronteras por ganancia de información y coste de viaje.",
-        "Integrar consumo de batería y retorno automático al cargador.",
-    ]:
-        story.append(Paragraph("• " + text, bullet))
-    story += [Paragraph("La elección final no persigue usar el algoritmo más complejo, sino el más avanzado que puede justificarse con la información sensorial disponible y comprobarse con invariantes claros.", note),
-              PageBreak()]
+    story += [Paragraph("6. Retos, simplificaciones y mejoras", h1),
+              Paragraph("En el apartado A", h2),
+              Paragraph("El reto principal fue separar lo que puede ocupar el centro de lo que cubre el cuerpo. Explorar solo desde coordenadas enteras dejaba salidas sin examinar en posiciones intermedias. La rejilla de medio paso corrige ese problema para este simulador. Aun así, la cobertura es la definida por sus muestras, no una medición continua de todo el suelo.", body),
+              Paragraph("DFS termina si el espacio alcanzable es finito, los objetos no cambian y el inicio es válido y está alineado con la rejilla. No supone conocer las dimensiones, pero depende de que los contactos cierren el entorno. En un mundo abierto podría seguir descubriendo puntos; max_probes limita los intentos para diagnóstico, no garantiza cobertura.", body),
+              Paragraph("El recorrido repite pasos al volver atrás. Una mejora sería elegir mejor el orden de las zonas pendientes o reducir los retornos por caminos conocidos. Eso buscaría ahorrar distancia, no aumentar una cobertura que ya es completa en los casos medidos. La versión actual no hace una fase separada de seguimiento de paredes.", body),
+              Paragraph("En el apartado B", h2),
+              Paragraph("La dificultad fue no aceptar un obstáculo como destino por haber encontrado cerca un punto libre. Ahora se rechazan puntos bloqueados, desconocidos o desconectados. Queda la simplificación de ajustar localmente coordenadas entre muestras. El error cero significa llegada al objetivo de rejilla; no prueba llegada exacta a todos los puntos continuos posibles.", body),
+              Paragraph("Los caminos solo son horizontales y verticales. Las diagonales podrían acortarlos, pero habría que comprobar todo el espacio que ocupa el cuerpo durante ese movimiento, no solo sus extremos. Con el mapa observado actual no se da esa comprobación por hecha.", body),
+              Paragraph("En el apartado C", h2),
+              Paragraph("Guardar puntos en vez de órdenes permite repetir la ruta con planificación, pero no conserva el camino manual exacto. Queda por decidir si C debería rechazar también cualquier waypoint no accesible, como B, en lugar de aproximarlo. Mostrar y medir el ajuste evita confundir lo solicitado con lo ejecutado, pero no elimina esa diferencia.", body),
+              Paragraph("Fuera del simulador", h2),
+              Paragraph("La posición es perfecta y los objetos son estáticos. En un robot real habría que corregir errores de posición y revisar el mapa ante obstáculos nuevos. Un sensor de distancia permitiría descubrir más sin acercarse a cada mueble. Hay batería en el simulador, pero no se ha implementado retorno autónomo al cargador.", body), PageBreak()]
 
     story += [Paragraph("7. Conclusiones", h1),
-              Paragraph("La práctica muestra que navegación, mapeo y control no deben resolverse de forma independiente. Un mapa visualmente plausible puede ser inútil para planificar si ignora la huella del robot; un camino geométricamente corto puede ser inseguro si no se conoce su volumen barrido; y un seguidor de pared puede moverse indefinidamente sin cubrir el interior.", body),
-              Paragraph("La solución final construye una abstracción común de espacio de configuración, garantiza terminación de la cobertura, usa búsqueda heurística óptima en la rejilla conocida y reutiliza el planificador durante la reproducción. La evaluación automatizada convierte afirmaciones como 'funciona' en medidas reproducibles.", body),
-              Paragraph("Ejecución para la defensa", h2),
-              Paragraph("1. Ejecutar <b>python validar_practica.py</b> para mostrar las métricas. 2. Lanzar el apartado A con cfg_0 y enseñar el overlay. 3. Ejecutar una ruta larga del apartado B. 4. Grabar dos o tres waypoints y reproducirlos con el apartado C. 5. Explicar por qué se conserva UNKNOWN y por qué no se usan diagonales no certificadas.", body),
-              Paragraph("Referencias", h2),
-              Paragraph("[1] P. Hart, N. Nilsson y B. Raphael. A Formal Basis for the Heuristic Determination of Minimum Cost Paths. IEEE TSSC, 4(2), 1968. DOI: 10.1109/TSSC.1968.300136.", small),
-              Paragraph("[2] B. Yamauchi. A Frontier-Based Approach for Autonomous Exploration. IEEE CIRA, 1997. DOI: 10.1109/CIRA.1997.613851.", small),
-              Paragraph("[3] H. Choset. Coverage for Robotics - A Survey of Recent Results. Annals of Mathematics and Artificial Intelligence 31, 2001. DOI: 10.1023/A:1016639210559.", small),
-              Paragraph("[4] A. Nash, K. Daniel, S. Koenig y A. Felner. Theta*: Any-Angle Path Planning on Grids. AAAI, 2007, pp. 1177-1183.", small),
-              Paragraph("[5] Enunciado oficial Práctica P1: Navegación en entornos complejos, USC, curso 2026/2027.", small)]
+              Paragraph("La principal lección es que un mapa para navegar no basta con que se parezca al dibujo del piso. Debe representar dónde cabe el robot y distinguir lo observado de lo desconocido. También hay que comprobar el suelo cubierto por su cuerpo por separado del recorrido de su centro.", body),
+              Paragraph("A crea el mapa sin reservar una matriz del tamaño del escenario. B encuentra caminos en la rejilla conocida y comunica cuándo no puede llegar. C guarda puntos ordenados y usa el mismo planificador para reproducirlos. Las pruebas permiten comprobar estos comportamientos; sus resultados no se extienden automáticamente a un robot real o a cualquier escenario nuevo.", body),
+              Paragraph("También hemos aprendido que llegar sin error a un objetivo no basta para evaluar una ruta: hay que comprobar si ese objetivo coincide con el solicitado y cuánto se ha ajustado. Por eso se distinguen las coordenadas originales de las ejecutadas, y se conservan por separado las medidas de cobertura, distancia y colisiones.", body),
+              Paragraph("Reproducción de resultados", h2),
+              Paragraph("Desde rds2026, con el entorno de Python activado y Pygame instalado:<br/><b>python -m unittest discover -s tests -v</b><br/><b>python validar_practica.py</b>", note),
+              Paragraph("La primera orden ejecuta las pruebas automáticas de representación del mapa, planificación, rechazo de destinos y movimiento en el simulador. La segunda explora los cuatro escenarios originales, ejecuta los recorridos de B y reproduce la ruta de ejemplo de C. Guarda las medidas en resultados/diagnostico.json, que es el archivo utilizado para elaborar las tablas de esta memoria.", body),
+              Paragraph("El diagnóstico se ejecuta sin ventana y sin limitar los ciclos por segundo para reducir el tiempo de cálculo. Se mantienen el paso físico de 0,5 unidades y las mismas comprobaciones de contacto de las ejecuciones con ventana. No se interpreta el número de ciclos como una duración real del recorrido.", body)]
 
     doc.build(story)
     return OUTPUT

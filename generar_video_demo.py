@@ -1,5 +1,9 @@
 #!/usr/bin/python
-"""Generate a short MP4 demonstration of parts A, B and C."""
+"""Crear un MP4 de A/B/C capturando el dibujo del simulador, no otro algoritmo.
+
+Solo ejecutar si se quiere regenerar el vídeo: este script sobrescribe el MP4.
+Las órdenes de movimiento siguen siendo run_coverage, navigate y replay.
+"""
 
 from __future__ import annotations
 
@@ -25,11 +29,14 @@ from apartado_c import replay
 
 
 class Recorder:
+    """Escribir títulos y fotogramas; sample_every controla cuántos se conservan."""
     def __init__(self, writer):
+        """Recibir el escritor de vídeo abierto por main."""
         self.writer = writer
         self.sample_every = 1
 
     def title(self, heading: str, detail: str, seconds: float = 1.2) -> None:
+        """Insertar una cartela repetida a 30 imágenes/segundo durante seconds."""
         image = Image.new("RGB", (700, 700), "#102A43")
         draw = ImageDraw.Draw(image)
         bold = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 38)
@@ -43,6 +50,7 @@ class Recorder:
             self.writer.append_data(frame)
 
     def callback(self, surface: pygame.Surface, frame_number: int) -> None:
+        """Recibir un ciclo del controlador y convertir su imagen a formato vídeo."""
         if frame_number % self.sample_every:
             return
         frame = pygame.surfarray.array3d(surface).swapaxes(0, 1)
@@ -50,6 +58,7 @@ class Recorder:
 
 
 def main() -> None:
+    """Ejecutar las demostraciones, capturar imágenes y cerrar el archivo MP4."""
     output = ROOT / "output" / "video" / "demo_P1.mp4"
     output.parent.mkdir(parents=True, exist_ok=True)
     writer = imageio.get_writer(

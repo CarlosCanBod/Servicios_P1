@@ -1,16 +1,23 @@
 #!/usr/bin/python
 # encoding: utf-8
+"""Coordinar ventana, teclado, mundo y robot en cada ciclo de simulación.
+
+Orden de dibujo: suelo/obstáculos -> robot -> objetos superiores/overlay.
+Los algoritmos llaman update para ejecutar el siguiente ciclo físico.
+"""
 
 import pygame
 from pygame.locals import *
 
 class simulation():
+    """Conectar un escenario con un robot y decidir cuándo actualizar ambos."""
 
     environment = None
     machine = None
     is_running = False
 
     def __init__(self, size, fps, environment, machine = None):
+        """size mide píxeles de ventana; fps limita ciclos por segundo, no metros."""
         self.screen = {
             'display': None,
             'window': {
@@ -41,6 +48,7 @@ class simulation():
             )
 
     def start(self, debug = False):
+        """Abrir la ventana e iniciar robot/reloj; A/B/C pueden detenerlo después."""
         pygame.init()
         self.screen['display'] = pygame.display.set_mode((
             self.screen['window']['size'][0],
@@ -57,15 +65,18 @@ class simulation():
             print("DEBUG: window: {}".format(self.screen))
 
     def stop(self):
+        """Detener el robot y liberar pygame, también al finalizar un diagnóstico."""
         self.is_running = False
         if self.machine is not None:
             self.machine.stop()
         pygame.quit()
 
     def read_keyboard(self):
+        """Retirar eventos pendientes para que teleoperate interprete las teclas."""
         return pygame.event.get()
 
     def update(self):
+        """Procesar eventos pendientes, ejecutar un paso físico y repintar pantalla."""
         # Procesar eventos y avanzar el mundo un paso. El controlador autónomo
         # llama a este método cada vez que permite un movimiento físico.
         for event in pygame.event.get():

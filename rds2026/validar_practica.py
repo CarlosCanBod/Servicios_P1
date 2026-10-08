@@ -24,12 +24,17 @@ ENDPOINTS = {
 
 
 def main() -> None:
+    """Probar los cuatro escenarios con pares origen-destino definidos debajo."""
     root = Path(__file__).resolve().parent
     os.chdir(root)
     output = root / "resultados"
     output.mkdir(exist_ok=True)
     report = {"coverage": {}, "navigation": {}, "replay": {}}
-    for config, start in DEFAULT_STARTS.items():
+    # DEFAULT_STARTS también incluye mapas extra para demostraciones. Aquí
+    # seleccionamos solo los que tienen un caso de B definido en ENDPOINTS;
+    # así no se produce un KeyError al llegar a un escenario adicional.
+    for config in ENDPOINTS:
+        start = DEFAULT_STARTS[config]
         # A genera un mapa nuevo por escenario; B usa exactamente ese archivo.
         # FPS=0 y headless=True aceleran la ejecución sin cambiar el paso físico.
         stem = Path(config).stem

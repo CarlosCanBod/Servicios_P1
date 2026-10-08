@@ -17,6 +17,7 @@ from robotica_servicios import Cell, MotionController, OccupancyGrid, astar, exe
 
 
 def parse_point(raw: str) -> tuple[float, float]:
+    """Leer coordenadas X,Y del terminal; los decimales también son válidos."""
     try:
         x, y = raw.split(",", maxsplit=1)
         return float(x), float(y)
@@ -52,6 +53,8 @@ def resolve_endpoint(grid: OccupancyGrid, point: tuple[float, float],
         else:
             axes.append((math.floor(scaled), math.ceil(scaled)))
     candidates = {(x, y) for x in axes[0] for y in axes[1]}
+    # Producto de las opciones de X e Y: 1 vértice si el punto está en rejilla,
+    # 2 si está entre dos muestras de un eje, 4 si lo está en ambos ejes.
 
     if not candidates <= free:
         if len(candidates) == 1:
@@ -77,6 +80,11 @@ def resolve_endpoint(grid: OccupancyGrid, point: tuple[float, float],
 def navigate(map_path: str, config: str | None, start: tuple[float, float],
              goal: tuple[float, float], fps: int = 60, headless: bool = False,
              smoothing: bool = True, frame_callback=None) -> dict:
+    """Cargar el mapa de A, validar extremos, planificar y ejecutar la ruta.
+
+    'requested_goal' conserva la petición; 'goal' es el objetivo de rejilla.
+    final_error se mide respecto a este último, no al punto arbitrario pedido.
+    """
     if headless:
         os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     grid = OccupancyGrid.load(map_path)
@@ -110,6 +118,7 @@ def navigate(map_path: str, config: str | None, start: tuple[float, float],
     original_extra = floor.update_extra
 
     def draw_overlay() -> None:
+        """Superponer cobertura y camino azul; density convierte unidades a píxeles."""
         original_extra()
         density = simulation.screen["window"]["density"]
         grid.draw(simulation.screen["display"], density)
@@ -141,6 +150,7 @@ def navigate(map_path: str, config: str | None, start: tuple[float, float],
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Definir mapa, origen, destino y opciones de ejecución del apartado B."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--map", default="mapa_grid.json")
     parser.add_argument("--config")
@@ -153,6 +163,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
+    """Ejecutar B desde el terminal y presentar rechazos sin un traceback largo."""
     os.chdir(Path(__file__).resolve().parent)
     args = build_parser().parse_args()
     try:

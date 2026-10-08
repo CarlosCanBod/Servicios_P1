@@ -1,3 +1,10 @@
+"""Comprobaciones automáticas: un assert incumplido hace fallar la prueba.
+
+Ejecutar desde rds2026: python -m unittest discover -s tests -v.
+Los tests unitarios verifican funciones pequeñas; los de integración conectan
+mapa, planificador y simulador. No sustituyen la demostración con teclado.
+"""
+
 import json
 import os
 from pathlib import Path
@@ -23,6 +30,7 @@ from robotica_servicios import Cell, OccupancyGrid, RecordedRoute, SparseExplora
 # Pruebas pequeñas de representaciones y planificación, sin recorrer un piso.
 class UnitTests(unittest.TestCase):
     def test_robot_state_is_not_shared(self):
+        """Modificar un robot no debe alterar los sensores de otro."""
         first = rds2026machines.vacuum((2, 3), 90)
         second = rds2026machines.vacuum((8, 9), 180)
         first.sensor["position"] = (99, 99)
@@ -30,6 +38,7 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(second.sensor["orientation"], 180)
 
     def test_astar_avoids_obstacle_and_compresses_turns(self):
+        """Una pared obliga a rodear; comprimir quita puntos, no origen ni destino."""
         grid = OccupancyGrid(7, 7)
         for y in range(1, 6):
             for x in range(1, 6):
@@ -43,6 +52,7 @@ class UnitTests(unittest.TestCase):
         self.assertLess(len(smooth_path(grid, path)), len(path))
 
     def test_map_and_route_round_trip(self):
+        """Guardar y cargar debe conservar poses finas y orden de waypoints."""
         with tempfile.TemporaryDirectory() as directory:
             grid_path = Path(directory) / "map.json"
             route_path = Path(directory) / "route.json"
@@ -57,12 +67,14 @@ class UnitTests(unittest.TestCase):
             self.assertEqual(RecordedRoute.load(route_path).waypoints[-1], (2.0, 1.0))
 
     def test_half_step_pose_covers_corner_cells(self):
+        """Una posición entre centros enteros puede cubrir cuatro celdas distintas."""
         grid = OccupancyGrid(5, 5)
         self.assertTrue(grid.configuration_in_bounds((4.0, 4.0)))
         grid.add_free_pose((1.5, 1.5))
         self.assertEqual(grid.covered_points(), {(1, 1), (1, 2), (2, 1), (2, 2)})
 
     def test_map_dimensions_are_derived_after_exploration(self):
+        """La matriz nace después de explorar y admite un origen distinto de cero."""
         # Incluir coordenadas negativas comprueba que no asumimos origen (0,0).
         # Antes de finalize no hay ancho; después se conserva el origen al guardar.
         observations = SparseExplorationMap("cfg_test.py", (-2, 3))
@@ -83,6 +95,7 @@ class UnitTests(unittest.TestCase):
             self.assertEqual(loaded.covered_points(), grid.covered_points())
 
     def test_malformed_route_is_rejected(self):
+        """Una ruta no debe elegir un fichero de escenario fuera del directorio."""
         with tempfile.TemporaryDirectory() as directory:
             route_path = Path(directory) / "bad.json"
             route_path.write_text(json.dumps({
@@ -97,6 +110,7 @@ class NavigationRejectionTests(unittest.TestCase):
     """B debe conservar el destino y rechazarlo antes de iniciar el simulador."""
 
     def setUp(self):
+        """Crear dos zonas libres separadas para aislar los rechazos del apartado B."""
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.map_path = str(Path(self.temp.name) / "disconnected.json")
@@ -107,6 +121,7 @@ class NavigationRejectionTests(unittest.TestCase):
         grid.save(self.map_path)
 
     def test_blocked_unknown_and_invalid_endpoints_do_not_start_simulation(self):
+        """Validar el extremo antes de cargar el entorno o intentar mover el robot."""
         cases = (
             ((2, 2), (3, 2), "Destino.*obstáculo"),
             ((2, 2), (4, 2), "Destino.*no explorada"),
@@ -124,6 +139,7 @@ class NavigationRejectionTests(unittest.TestCase):
             environment.assert_not_called()
 
     def test_astar_rejects_free_destination_in_another_component(self):
+        """Ser libre no basta: tiene que existir camino desde el origen."""
         # Los dos extremos son libres, pero no existe camino entre ellos.
         # La versión antigua cambiaba el destino a la componente de (2, 2).
         with patch("apartado_b.rds2026environment.floorplan") as environment:
@@ -132,6 +148,7 @@ class NavigationRejectionTests(unittest.TestCase):
             environment.assert_not_called()
 
     def test_local_discretization_does_not_hide_disconnected_destination(self):
+        """Ajustar decimales localmente no debe cambiar de habitación el destino."""
         # Sus cuatro vértices son libres, pero pertenecen a otra componente.
         with patch("apartado_b.rds2026environment.floorplan") as environment:
             with self.assertRaisesRegex(ValueError, "zonas desconectadas"):
@@ -139,6 +156,7 @@ class NavigationRejectionTests(unittest.TestCase):
             environment.assert_not_called()
 
     def test_command_line_explains_rejection_without_traceback(self):
+        """El terminal debe explicar el rechazo y acabar con código de error 1."""
         result = subprocess.run(
             [sys.executable, str(ROOT / "apartado_b.py"), "--map", self.map_path,
              "--start", "2,2", "--goal", "5,2", "--headless", "--fps", "0"],
@@ -156,6 +174,7 @@ class NavigationRejectionTests(unittest.TestCase):
 class IntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        """Explorar cfg_3 una vez; las pruebas de B/C reutilizan este mapa temporal."""
         cls.temp = tempfile.TemporaryDirectory()
         cls.map_path = str(Path(cls.temp.name) / "cfg3.json")
         cls.txt_path = str(Path(cls.temp.name) / "cfg3.txt")
@@ -165,6 +184,7 @@ class IntegrationTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        """Borrar solo el directorio temporal creado por este grupo de pruebas."""
         cls.temp.cleanup()
 
     def test_complete_coverage(self):
@@ -178,11 +198,13 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(self.coverage["collisions"], 0)
 
     def test_long_navigation(self):
+        """Recorrer el mapa de A y comprobar llegada y contador de colisiones."""
         metrics = navigate(self.map_path, None, (2, 2), (12, 12), 0, True, True)
         self.assertEqual(metrics["final_error"], 0.0)
         self.assertEqual(metrics["collisions"], 0)
 
     def test_arbitrary_points_are_safely_snapped(self):
+        """Medir el ajuste local para decimales con vecinos conocidos libres."""
         # Ambas coordenadas están en intervalos con todos sus vértices libres.
         metrics = navigate(self.map_path, None, (2.2, 2.2), (11.8, 11.8), 0, True, True)
         self.assertLessEqual(metrics["start_snap_distance"], 0.36)
@@ -191,6 +213,7 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(metrics["collisions"], 0)
 
     def test_real_map_wall_is_rejected_instead_of_snapped(self):
+        """Distinguir pared observada, zona desconocida y ajuste local no permitido."""
         with patch("apartado_b.rds2026environment.floorplan") as environment:
             cases = (((9.5, 3), "obstáculo"), ((10, 3), "no explorada"),
                      ((9.25, 3), "no se permite ajustar"))
@@ -201,6 +224,7 @@ class IntegrationTests(unittest.TestCase):
             environment.assert_not_called()
 
     def test_route_replay(self):
+        """Reproducir una ruta válida con el simulador y comprobar sus medidas."""
         route_path = Path(self.temp.name) / "route.json"
         RecordedRoute("integration", "cfg_3.py",
                       [(2, 2), (9, 2), (12, 12), (7, 7)]).save(route_path)

@@ -1,5 +1,12 @@
 #!/usr/bin/python
 # encoding: utf-8
+"""Prototipo previo de seguimiento de pared derecha; no es el apartado A final.
+
+Busca una pared y mantiene su contorno con reglas de contacto. No almacena un
+mapa ni recuerda visitas, por lo que no asegura cobertura del interior o final.
+TURN_DEG fija los giros; cooldown espera ciclos después de un giro para evitar
+decidir de nuevo inmediatamente con sensores del mismo instante.
+"""
 
 import rds2026simulation, rds2026environment, rds2026machines
 
@@ -30,6 +37,7 @@ def prox_r():  # pared a la derecha (pegada)
     return robot.sensor['proximity']['right']
 
 def rotate(deg):
+    """Parar, cambiar rumbo y retomar avance, dejando dos ciclos de espera."""
     global cooldown
     robot.stop()
     robot.rotate(deg)

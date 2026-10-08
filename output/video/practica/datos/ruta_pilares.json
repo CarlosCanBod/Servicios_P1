@@ -1,0 +1,33 @@
+{
+  "format": "rds-p1-waypoints",
+  "version": 1,
+  "name": "ruta_pilares",
+  "config": "cfg_pilares_grande.py",
+  "created_at": 1791457635.2707515,
+  "waypoints": [
+    [
+      5.5,
+      2.0
+    ],
+    [
+      7.0,
+      2.0
+    ],
+    [
+      7.0,
+      4.0
+    ],
+    [
+      9.0,
+      4.0
+    ],
+    [
+      9.0,
+      10.0
+    ],
+    [
+      5.5,
+      10.0
+    ]
+  ]
+}

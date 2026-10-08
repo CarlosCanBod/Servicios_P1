@@ -1,8 +1,15 @@
 #!/usr/bin/pyton
 # encoding: utf-8
+"""Mundo del simulador: carga paredes/muebles, prepara colisiones y dibuja.
+
+Este archivo sí conoce el escenario completo porque representa la realidad
+simulada. No es el mapa aprendido por A: ese se construye con observaciones.
+"""
 
 import runpy, os, sys, pygame
 
+# Las imágenes originales tienen 20 píxeles por unidad de mundo. Al mostrarlas
+# se convierten a la escala de la ventana; no son 20 celdas del mapa de A.
 TILE_SIZE = 20
 
 TILE_WALL = 0
@@ -23,6 +30,7 @@ TILE_IMAGES = {
 }
 
 class floorplan():
+    """Separar obstáculos físicos (objects) y dibujos sin colisión (extra_objects)."""
 
     screen = None
     size = None
@@ -37,6 +45,7 @@ class floorplan():
     cfg_obj_objects = []
 
     def __init__(self, config_file):
+        """Leer walls y objects del fichero Python de configuración."""
         # Cada escenario tiene sus propias listas. Si fueran compartidas por
         # la clase, cargar varios mapas en las pruebas acumularía sus obstáculos.
         self.objects = []
@@ -52,13 +61,16 @@ class floorplan():
             print("ERROR: no config file '{}' found!".format(config_file))
             sys.exit(1)
         cfg_file_data = runpy.run_path(config_file)
+        # run_path ejecuta el archivo local y devuelve sus variables. Por eso
+        # los cfg_*.py deben ser de confianza: no son datos JSON externos.
 
         # check walls
         if not 'walls' in cfg_file_data:
             print("ERROR: format error in config file! no walls")
             sys.exit(1)
 
-        # read walls
+        # Cada carácter representa una celda del escenario. X es su columna,
+        # Y su fila; '#' es pared y los puntos/espacios no generan un obstáculo.
         for r in cfg_file_data['walls']:
             r_col = 0
             for c in r.rstrip():
@@ -105,6 +117,7 @@ class floorplan():
         self.size = (n_cols, n_rows)
     
     def init_images(self, screen):
+        """Crear imágenes y rectángulos de colisión con la escala de la ventana."""
         self.screen = screen
         dd = screen['window']['density']
         coordinates = (0, 0)
@@ -174,7 +187,9 @@ class floorplan():
                     rect_img.x = (obj['coord'][0] - original_img_rect.width/TILE_SIZE//2) * dd
                     rect_img.y = (obj['coord'][1] - original_img_rect.height/TILE_SIZE//2) * dd
 
-                    # level 0: objects
+                    # Solo level=0 (también el valor por defecto) bloquea al
+                    # robot. Una alfombra bajo él o una copa por encima son
+                    # dibujos: no añaden rectángulos a la lista de colisiones.
                     if level == 0:
                         self.objects.append({'img':img, 'bbox':rect_img.copy(),
                             'desc':obj['desc']})
@@ -193,6 +208,7 @@ class floorplan():
         self.cfg_obj_objects = []
 
     def update(self):
+        """Limpiar el fotograma y dibujar suelo y obstáculos antes del robot."""
         self.screen['display'].fill((200, 200, 200))
         # under
         for obj in self.extra_objects['under']:
@@ -205,6 +221,6 @@ class floorplan():
                 pygame.draw.rect(self.screen['display'], (100, 100, 200), obj['bbox'], 2)
 
     def update_extra(self):
-        # above
+        """Dibujar objetos superiores; A/B/C añaden aquí sus capas informativas."""
         for obj in self.extra_objects['above']:
             self.screen['display'].blit(obj['img'], obj['bbox'])

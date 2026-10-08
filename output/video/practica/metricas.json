@@ -1,0 +1,801 @@
+{
+  "encoded_fps": 30,
+  "cases": [
+    {
+      "section": "A",
+      "scenario": "cfg_0.py",
+      "metrics": {
+        "reachable_poses": 1308,
+        "visited_poses": 1308,
+        "pose_coverage_percent": 100.0,
+        "missed_poses": 0,
+        "unexpected_poses": 0,
+        "reachable_cells": 416,
+        "visited_cells": 416,
+        "coverage_percent": 100.0,
+        "missed_cells": 0,
+        "unexpected_cells": 0,
+        "contact_obstacles": 233,
+        "probes": 1540,
+        "trajectory_steps": 2614,
+        "simulation_frames": 2614,
+        "collisions": 0
+      },
+      "video": "output/video/practica/A_muebles.mp4",
+      "movement_steps_per_second": 60,
+      "video_info": {
+        "frames": 1427,
+        "fps": 30.0,
+        "size": [
+          700,
+          700
+        ],
+        "duration_seconds": 47.57,
+        "decode_verified": true,
+        "review_frames": "output/video/practica/revision/A_muebles",
+        "review_images": [
+          "inicio.png",
+          "medio.png",
+          "objetivo.png",
+          "final.png"
+        ]
+      }
+    },
+    {
+      "section": "A",
+      "scenario": "cfg_1_copy.py",
+      "metrics": {
+        "reachable_poses": 1201,
+        "visited_poses": 1201,
+        "pose_coverage_percent": 100.0,
+        "missed_poses": 0,
+        "unexpected_poses": 0,
+        "reachable_cells": 415,
+        "visited_cells": 415,
+        "coverage_percent": 100.0,
+        "missed_cells": 0,
+        "unexpected_cells": 0,
+        "contact_obstacles": 298,
+        "probes": 1498,
+        "trajectory_steps": 2400,
+        "simulation_frames": 2400,
+        "collisions": 0
+      },
+      "video": "output/video/practica/A_interior.mp4",
+      "movement_steps_per_second": 60,
+      "video_info": {
+        "frames": 1320,
+        "fps": 30.0,
+        "size": [
+          700,
+          700
+        ],
+        "duration_seconds": 44.0,
+        "decode_verified": true,
+        "review_frames": "output/video/practica/revision/A_interior",
+        "review_images": [
+          "inicio.png",
+          "medio.png",
+          "objetivo.png",
+          "final.png"
+        ]
+      }
+    },
+    {
+      "section": "A",
+      "scenario": "cfg_laberinto.py",
+      "metrics": {
+        "reachable_poses": 381,
+        "visited_poses": 381,
+        "pose_coverage_percent": 100.0,
+        "missed_poses": 0,
+        "unexpected_poses": 0,
+        "reachable_cells": 177,
+        "visited_cells": 177,
+        "coverage_percent": 100.0,
+        "missed_cells": 0,
+        "unexpected_cells": 0,
+        "contact_obstacles": 199,
+        "probes": 579,
+        "trajectory_steps": 760,
+        "simulation_frames": 760,
+        "collisions": 0
+      },
+      "video": "output/video/practica/A_laberinto.mp4",
+      "movement_steps_per_second": 45,
+      "video_info": {
+        "frames": 626,
+        "fps": 30.0,
+        "size": [
+          700,
+          700
+        ],
+        "duration_seconds": 20.87,
+        "decode_verified": true,
+        "review_frames": "output/video/practica/revision/A_laberinto",
+        "review_images": [
+          "inicio.png",
+          "medio.png",
+          "objetivo.png",
+          "final.png"
+        ]
+      }
+    },
+    {
+      "section": "A",
+      "scenario": "cfg_pilares_grande.py",
+      "metrics": {
+        "reachable_poses": 116,
+        "visited_poses": 116,
+        "pose_coverage_percent": 100.0,
+        "missed_poses": 0,
+        "unexpected_poses": 0,
+        "reachable_cells": 81,
+        "visited_cells": 81,
+        "coverage_percent": 100.0,
+        "missed_cells": 0,
+        "unexpected_cells": 0,
+        "contact_obstacles": 138,
+        "probes": 253,
+        "trajectory_steps": 230,
+        "simulation_frames": 230,
+        "collisions": 0
+      },
+      "video": "output/video/practica/A_pilares.mp4",
+      "movement_steps_per_second": 35,
+      "video_info": {
+        "frames": 317,
+        "fps": 30.0,
+        "size": [
+          700,
+          700
+        ],
+        "duration_seconds": 10.57,
+        "decode_verified": true,
+        "review_frames": "output/video/practica/revision/A_pilares",
+        "review_images": [
+          "inicio.png",
+          "medio.png",
+          "objetivo.png",
+          "final.png"
+        ]
+      }
+    },
+    {
+      "section": "B",
+      "scenario": "cfg_0.py",
+      "metrics": {
+        "requested_start": [
+          14.0,
+          17.5
+        ],
+        "requested_goal": [
+          14.0,
+          7.5
+        ],
+        "start": [
+          14.0,
+          17.5
+        ],
+        "goal": [
+          14.0,
+          7.5
+        ],
+        "start_snap_distance": 0.0,
+        "goal_snap_distance": 0.0,
+        "astar_cells": 31,
+        "waypoints": 6,
+        "path_length": 15.0,
+        "final_error": 0.0,
+        "collisions": 0,
+        "frames": 30,
+        "manhattan_steps": 20,
+        "astar_steps": 30,
+        "detour_steps": 10,
+        "rejections": [
+          {
+            "case": "Destino bloqueado",
+            "result": "rechazado",
+            "message": "Destino (1.5, 20.0): no accesible según el mapa (pose bloqueada por un obstáculo)."
+          },
+          {
+            "case": "Destino desconocido",
+            "result": "rechazado",
+            "message": "Destino (1.0, 4.0): no accesible según el mapa (zona no explorada)."
+          },
+          {
+            "case": "Destino fuera del mapa",
+            "result": "rechazado",
+            "message": "Destino (30.0, 7.0): fuera del mapa observado."
+          }
+        ]
+      },
+      "video": "output/video/practica/B_muebles.mp4",
+      "movement_steps_per_second": 5,
+      "video_info": {
+        "frames": 420,
+        "fps": 30.0,
+        "size": [
+          700,
+          700
+        ],
+        "duration_seconds": 14.0,
+        "decode_verified": true,
+        "review_frames": "output/video/practica/revision/B_muebles",
+        "review_images": [
+          "inicio.png",
+          "medio.png",
+          "objetivo.png",
+          "final.png",
+          "rechazo.png"
+        ]
+      }
+    },
+    {
+      "section": "B",
+      "scenario": "cfg_1_copy.py",
+      "metrics": {
+        "requested_start": [
+          2.0,
+          2.0
+        ],
+        "requested_goal": [
+          2.0,
+          18.0
+        ],
+        "start": [
+          2.0,
+          2.0
+        ],
+        "goal": [
+          2.0,
+          18.0
+        ],
+        "start_snap_distance": 0.0,
+        "goal_snap_distance": 0.0,
+        "astar_cells": 65,
+        "waypoints": 7,
+        "path_length": 32.0,
+        "final_error": 0.0,
+        "collisions": 0,
+        "frames": 64,
+        "manhattan_steps": 32,
+        "astar_steps": 64,
+        "detour_steps": 32,
+        "rejections": [
+          {
+            "case": "Destino bloqueado",
+            "result": "rechazado",
+            "message": "Destino (1.5, 2.0): no accesible según el mapa (pose bloqueada por un obstáculo)."
+          },
+          {
+            "case": "Destino desconocido",
+            "result": "rechazado",
+            "message": "Destino (1.0, 1.0): no accesible según el mapa (zona no explorada)."
+          },
+          {
+            "case": "Destino fuera del mapa",
+            "result": "rechazado",
+            "message": "Destino (27.0, 4.0): fuera del mapa observado."
+          }
+        ]
+      },
+      "video": "output/video/practica/B_interior.mp4",
+      "movement_steps_per_second": 9,
+      "video_info": {
+        "frames": 453,
+        "fps": 30.0,
+        "size": [
+          700,
+          700
+        ],
+        "duration_seconds": 15.1,
+        "decode_verified": true,
+        "review_frames": "output/video/practica/revision/B_interior",
+        "review_images": [
+          "inicio.png",
+          "medio.png",
+          "objetivo.png",
+          "final.png",
+          "rechazo.png"
+        ]
+      }
+    },
+    {
+      "section": "B",
+      "scenario": "cfg_laberinto.py",
+      "metrics": {
+        "requested_start": [
+          2.0,
+          2.0
+        ],
+        "requested_goal": [
+          2.0,
+          13.0
+        ],
+        "start": [
+          2.0,
+          2.0
+        ],
+        "goal": [
+          2.0,
+          13.0
+        ],
+        "start_snap_distance": 0.0,
+        "goal_snap_distance": 0.0,
+        "astar_cells": 55,
+        "waypoints": 8,
+        "path_length": 27.0,
+        "final_error": 0.0,
+        "collisions": 0,
+        "frames": 54,
+        "manhattan_steps": 22,
+        "astar_steps": 54,
+        "detour_steps": 32,
+        "rejections": [
+          {
+            "case": "Destino bloqueado",
+            "result": "rechazado",
+            "message": "Destino (1.5, 2.0): no accesible según el mapa (pose bloqueada por un obstáculo)."
+          },
+          {
+            "case": "Destino desconocido",
+            "result": "rechazado",
+            "message": "Destino (1.0, 1.0): no accesible según el mapa (zona no explorada)."
+          },
+          {
+            "case": "Destino fuera del mapa",
+            "result": "rechazado",
+            "message": "Destino (19.0, 4.0): fuera del mapa observado."
+          }
+        ]
+      },
+      "video": "output/video/practica/B_laberinto.mp4",
+      "movement_steps_per_second": 8,
+      "video_info": {
+        "frames": 442,
+        "fps": 30.0,
+        "size": [
+          700,
+          700
+        ],
+        "duration_seconds": 14.73,
+        "decode_verified": true,
+        "review_frames": "output/video/practica/revision/B_laberinto",
+        "review_images": [
+          "inicio.png",
+          "medio.png",
+          "objetivo.png",
+          "final.png",
+          "rechazo.png"
+        ]
+      }
+    },
+    {
+      "section": "B",
+      "scenario": "cfg_pilares_grande.py",
+      "metrics": {
+        "requested_start": [
+          5.5,
+          2.0
+        ],
+        "requested_goal": [
+          5.5,
+          10.0
+        ],
+        "start": [
+          5.5,
+          2.0
+        ],
+        "goal": [
+          5.5,
+          10.0
+        ],
+        "start_snap_distance": 0.0,
+        "goal_snap_distance": 0.0,
+        "astar_cells": 31,
+        "waypoints": 6,
+        "path_length": 15.0,
+        "final_error": 0.0,
+        "collisions": 0,
+        "frames": 30,
+        "manhattan_steps": 16,
+        "astar_steps": 30,
+        "detour_steps": 14,
+        "rejections": [
+          {
+            "case": "Destino bloqueado",
+            "result": "rechazado",
+            "message": "Destino (1.5, 3.0): no accesible según el mapa (pose bloqueada por un obstáculo)."
+          },
+          {
+            "case": "Destino desconocido",
+            "result": "rechazado",
+            "message": "Destino (1.0, 1.0): no accesible según el mapa (zona no explorada)."
+          },
+          {
+            "case": "Destino fuera del mapa",
+            "result": "rechazado",
+            "message": "Destino (13.0, 4.0): fuera del mapa observado."
+          }
+        ]
+      },
+      "video": "output/video/practica/B_pilares.mp4",
+      "movement_steps_per_second": 5,
+      "video_info": {
+        "frames": 420,
+        "fps": 30.0,
+        "size": [
+          700,
+          700
+        ],
+        "duration_seconds": 14.0,
+        "decode_verified": true,
+        "review_frames": "output/video/practica/revision/B_pilares",
+        "review_images": [
+          "inicio.png",
+          "medio.png",
+          "objetivo.png",
+          "final.png",
+          "rechazo.png"
+        ]
+      }
+    },
+    {
+      "section": "C",
+      "scenario": "cfg_0.py",
+      "metrics": {
+        "route": "ruta_muebles",
+        "waypoints": 6,
+        "segments_replayed": 5,
+        "planned_segments": 5,
+        "max_snap_distance": 0.0,
+        "final_error": 0.0,
+        "collisions": 0,
+        "frames": 30,
+        "teleop_collisions": 0,
+        "teleop_final_position": [
+          14.0,
+          7.5
+        ],
+        "recorded_waypoints": [
+          [
+            14.0,
+            17.5
+          ],
+          [
+            14.0,
+            15.0
+          ],
+          [
+            16.5,
+            15.0
+          ],
+          [
+            16.5,
+            10.5
+          ],
+          [
+            14.0,
+            10.5
+          ],
+          [
+            14.0,
+            7.5
+          ]
+        ],
+        "route_file": "output/video/practica/datos/ruta_muebles.json"
+      },
+      "video": "output/video/practica/C_muebles.mp4",
+      "movement_steps_per_second": 5,
+      "video_info": {
+        "frames": 843,
+        "fps": 30.0,
+        "size": [
+          700,
+          700
+        ],
+        "duration_seconds": 28.1,
+        "decode_verified": true,
+        "review_frames": "output/video/practica/revision/C_muebles",
+        "review_images": [
+          "inicio.png",
+          "medio.png",
+          "objetivo.png",
+          "final.png",
+          "replay.png"
+        ]
+      }
+    },
+    {
+      "section": "C",
+      "scenario": "cfg_1_copy.py",
+      "metrics": {
+        "route": "ruta_interior",
+        "waypoints": 7,
+        "segments_replayed": 6,
+        "planned_segments": 6,
+        "max_snap_distance": 0.0,
+        "final_error": 0.0,
+        "collisions": 0,
+        "frames": 64,
+        "teleop_collisions": 0,
+        "teleop_final_position": [
+          2.0,
+          18.0
+        ],
+        "recorded_waypoints": [
+          [
+            2.0,
+            2.0
+          ],
+          [
+            2.0,
+            8.0
+          ],
+          [
+            9.0,
+            8.0
+          ],
+          [
+            9.0,
+            14.0
+          ],
+          [
+            10.0,
+            14.0
+          ],
+          [
+            10.0,
+            18.0
+          ],
+          [
+            2.0,
+            18.0
+          ]
+        ],
+        "route_file": "output/video/practica/datos/ruta_interior.json"
+      },
+      "video": "output/video/practica/C_interior.mp4",
+      "movement_steps_per_second": 9,
+      "video_info": {
+        "frames": 870,
+        "fps": 30.0,
+        "size": [
+          700,
+          700
+        ],
+        "duration_seconds": 29.0,
+        "decode_verified": true,
+        "review_frames": "output/video/practica/revision/C_interior",
+        "review_images": [
+          "inicio.png",
+          "medio.png",
+          "objetivo.png",
+          "final.png",
+          "replay.png"
+        ]
+      }
+    },
+    {
+      "section": "C",
+      "scenario": "cfg_laberinto.py",
+      "metrics": {
+        "route": "ruta_laberinto",
+        "waypoints": 8,
+        "segments_replayed": 7,
+        "planned_segments": 7,
+        "max_snap_distance": 0.0,
+        "final_error": 0.0,
+        "collisions": 0,
+        "frames": 54,
+        "teleop_collisions": 0,
+        "teleop_final_position": [
+          2.0,
+          13.0
+        ],
+        "recorded_waypoints": [
+          [
+            2.0,
+            2.0
+          ],
+          [
+            2.0,
+            7.0
+          ],
+          [
+            9.0,
+            7.0
+          ],
+          [
+            9.0,
+            13.0
+          ],
+          [
+            7.0,
+            13.0
+          ],
+          [
+            7.0,
+            14.0
+          ],
+          [
+            2.0,
+            14.0
+          ],
+          [
+            2.0,
+            13.0
+          ]
+        ],
+        "route_file": "output/video/practica/datos/ruta_laberinto.json"
+      },
+      "video": "output/video/practica/C_laberinto.mp4",
+      "movement_steps_per_second": 8,
+      "video_info": {
+        "frames": 908,
+        "fps": 30.0,
+        "size": [
+          700,
+          700
+        ],
+        "duration_seconds": 30.27,
+        "decode_verified": true,
+        "review_frames": "output/video/practica/revision/C_laberinto",
+        "review_images": [
+          "inicio.png",
+          "medio.png",
+          "objetivo.png",
+          "final.png",
+          "replay.png"
+        ]
+      }
+    },
+    {
+      "section": "C",
+      "scenario": "cfg_pilares_grande.py",
+      "metrics": {
+        "route": "ruta_pilares",
+        "waypoints": 6,
+        "segments_replayed": 5,
+        "planned_segments": 5,
+        "max_snap_distance": 0.0,
+        "final_error": 0.0,
+        "collisions": 0,
+        "frames": 30,
+        "teleop_collisions": 0,
+        "teleop_final_position": [
+          5.5,
+          10.0
+        ],
+        "recorded_waypoints": [
+          [
+            5.5,
+            2.0
+          ],
+          [
+            7.0,
+            2.0
+          ],
+          [
+            7.0,
+            4.0
+          ],
+          [
+            9.0,
+            4.0
+          ],
+          [
+            9.0,
+            10.0
+          ],
+          [
+            5.5,
+            10.0
+          ]
+        ],
+        "route_file": "output/video/practica/datos/ruta_pilares.json"
+      },
+      "video": "output/video/practica/C_pilares.mp4",
+      "movement_steps_per_second": 5,
+      "video_info": {
+        "frames": 837,
+        "fps": 30.0,
+        "size": [
+          700,
+          700
+        ],
+        "duration_seconds": 27.9,
+        "decode_verified": true,
+        "review_frames": "output/video/practica/revision/C_pilares",
+        "review_images": [
+          "inicio.png",
+          "medio.png",
+          "objetivo.png",
+          "final.png",
+          "replay.png"
+        ]
+      }
+    }
+  ],
+  "summary_video": {
+    "video": "output/video/practica/resumen_completo.mp4",
+    "frames": 8883,
+    "fps": 30.0,
+    "size": [
+      700,
+      700
+    ],
+    "duration_seconds": 296.1,
+    "decode_verified": true,
+    "review_frames": "output/video/practica/revision/resumen_completo",
+    "review_images": [
+      "inicio.png",
+      "medio.png",
+      "objetivo.png",
+      "final.png"
+    ],
+    "chapters": [
+      {
+        "title": "A · cfg_0.py",
+        "start_seconds": 0.0,
+        "end_seconds": 47.57
+      },
+      {
+        "title": "A · cfg_1_copy.py",
+        "start_seconds": 47.57,
+        "end_seconds": 91.57
+      },
+      {
+        "title": "A · cfg_laberinto.py",
+        "start_seconds": 91.57,
+        "end_seconds": 112.44
+      },
+      {
+        "title": "A · cfg_pilares_grande.py",
+        "start_seconds": 112.44,
+        "end_seconds": 123.01
+      },
+      {
+        "title": "B · cfg_0.py",
+        "start_seconds": 123.01,
+        "end_seconds": 137.01
+      },
+      {
+        "title": "B · cfg_1_copy.py",
+        "start_seconds": 137.01,
+        "end_seconds": 152.11
+      },
+      {
+        "title": "B · cfg_laberinto.py",
+        "start_seconds": 152.11,
+        "end_seconds": 166.84
+      },
+      {
+        "title": "B · cfg_pilares_grande.py",
+        "start_seconds": 166.84,
+        "end_seconds": 180.84
+      },
+      {
+        "title": "C · cfg_0.py",
+        "start_seconds": 180.84,
+        "end_seconds": 208.94
+      },
+      {
+        "title": "C · cfg_1_copy.py",
+        "start_seconds": 208.94,
+        "end_seconds": 237.94
+      },
+      {
+        "title": "C · cfg_laberinto.py",
+        "start_seconds": 237.94,
+        "end_seconds": 268.21
+      },
+      {
+        "title": "C · cfg_pilares_grande.py",
+        "start_seconds": 268.21,
+        "end_seconds": 296.11
+      }
+    ]
+  }
+}

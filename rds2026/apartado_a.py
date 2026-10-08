@@ -32,6 +32,7 @@ DEFAULT_STARTS = {
 
 
 def parse_point(raw: str) -> tuple[float, float]:
+    """Convertir '--start 21,21' en la pareja numérica (21.0, 21.0)."""
     try:
         x, y = raw.split(",", maxsplit=1)
         return float(x), float(y)
@@ -40,6 +41,7 @@ def parse_point(raw: str) -> tuple[float, float]:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Definir las opciones que se pueden consultar con --help."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default="cfg_0.py")
     parser.add_argument("--start", type=parse_point)
@@ -54,6 +56,12 @@ def build_parser() -> argparse.ArgumentParser:
 def run_coverage(config: str, start: tuple[float, float], fps: int,
                  headless: bool, output: str, legacy_output: str,
                  max_probes: int | None = None, frame_callback=None) -> dict:
+    """Ejecutar A, guardar JSON/TXT y devolver sus medidas de cobertura.
+
+    config identifica el escenario; start es la posición inicial conocida.
+    max_probes limita intentos para diagnóstico, pero no es el tamaño del mapa.
+    La referencia geométrica de evaluación se calcula DESPUÉS de explorar.
+    """
     if headless:
         # SDL dummy permite probar sin ventana visible; el simulador sigue
         # actualizando el robot y sus rectángulos de contacto normalmente.
@@ -120,6 +128,9 @@ def run_coverage(config: str, start: tuple[float, float], fps: int,
 
 
 def main() -> None:
+    """Leer argumentos, elegir el inicio y mostrar las métricas de esta ejecución."""
+    # Trabajar desde este directorio permite encontrar cfg_*.py e img/ aunque
+    # lancemos el script desde otra carpeta. No cambia el mapa del explorador.
     os.chdir(Path(__file__).resolve().parent)
     args = build_parser().parse_args()
     start = args.start or DEFAULT_STARTS.get(Path(args.config).name)
