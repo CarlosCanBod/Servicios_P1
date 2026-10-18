@@ -22,13 +22,16 @@ con el plano real se realiza después y únicamente para el diagnóstico.
 
 ```bash
 cd rds2026
-../tmp/bin/python apartado_a.py --config cfg_0.py --start 21,21
+python apartado_a.py --config cfg_0.py --start 21,21
 ```
+
+Los comandos presuponen que está activado el entorno de Python descrito en el
+README principal, con Pygame instalado.
 
 Para ejecutar rápidamente sin ventana:
 
 ```bash
-SDL_VIDEODRIVER=dummy ../tmp/bin/python apartado_a.py \
+python apartado_a.py \
   --config cfg_2.py --start 21,21 --fps 0 --headless
 ```
 
@@ -44,7 +47,7 @@ Se utiliza A* con heurística Manhattan admisible sobre poses libres de medio pa
 arriesgar atajos diagonales cuyo volumen barrido no esté observado.
 
 ```bash
-../tmp/bin/python apartado_b.py --map mapa_grid.json \
+python apartado_b.py --map mapa_grid.json \
   --start 23,7 --goal 2,26
 ```
 
@@ -65,7 +68,7 @@ libre cercana. Este tratamiento también se aplica al origen.
 Grabación manual:
 
 ```bash
-../tmp/bin/python apartado_c.py record --config cfg_0.py \
+python apartado_c.py record --config cfg_0.py \
   --start 21,21 --route rutas/mi_ruta.json
 ```
 
@@ -86,7 +89,7 @@ línea muestran también dónde se ejecutará realmente la llegada.
 Reproducción autónoma (utiliza el A* y el controlador compartidos con B):
 
 ```bash
-../tmp/bin/python apartado_c.py replay --route rutas/mi_ruta.json \
+python apartado_c.py replay --route rutas/mi_ruta.json \
   --map mapa_grid.json
 ```
 
@@ -100,19 +103,18 @@ como colisiones.
 ## Validación
 
 ```bash
-../tmp/bin/python -m unittest discover -s tests -v
-../tmp/bin/python validar_practica.py
+python -m unittest discover -s tests -v
+python validar_practica.py
 ```
 
 La segunda orden explora los cuatro mapas originales, mide poses y superficie, ejecuta
 rutas largas y reproduce una ruta guardada. Los resultados quedan en
 `resultados/diagnostico.json`; ese script registra medidas, mientras que los tests
 son los que hacen aserciones. Los mapas extra se pueden ejecutar individualmente
-con A, pero no tienen casos de B definidos en este diagnóstico. La crítica está en
-`AUDITORIA_TECNICA.md`.
+con A, pero no tienen casos de B definidos en este diagnóstico.
 
 El código contiene comentarios que explican los datos, las decisiones y las
-limitaciones; los ejemplos `test1.py` a `test4.py` no son los apartados finales.
+limitaciones de cada algoritmo.
 
 ## Decisiones y limitaciones honestas
 

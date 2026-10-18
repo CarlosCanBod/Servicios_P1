@@ -164,6 +164,8 @@ env.bak/
 venv.bak/
 tmp/
 *.zip
+# Conservar en Git únicamente el paquete final de P1.
+!output/entrega/P1_Robotica_Servicios.zip
 .antigravityignore
 
 # Spyder project settings

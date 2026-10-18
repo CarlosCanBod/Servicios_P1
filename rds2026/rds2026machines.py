@@ -291,6 +291,6 @@ class vacuum_rotator(vacuum):
         self.rotate(randint(-45, +45))
 
 class vacuum_zero(vacuum):
-    """Ejemplo original sin reacción; no es el controlador autónomo de la entrega."""
+    """Variante del modelo básico que no aplica maniobras tras una colisión."""
     def collision_strategy(self):
         None
